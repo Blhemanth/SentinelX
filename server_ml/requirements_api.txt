@@ -1,0 +1,6 @@
+# SentinelX Inference API — Runtime dependencies (lighter than training requirements)
+fastapi>=0.111.0
+uvicorn[standard]>=0.30.0
+pydantic>=2.7.0
+torch>=2.4.0
+numpy>=1.26.0

@@ -1,0 +1,28 @@
+[
+  {
+    "sample_id": "sample_0008",
+    "video_path": "processed\\video_clips\\sample_0008.npy",
+    "audio_path": "processed\\mel_specs\\sample_0008.npy",
+    "threat_label": "Explosion",
+    "class_id": 3,
+    "bbox": [
+      0.163,
+      0.235,
+      0.152,
+      0.201
+    ]
+  },
+  {
+    "sample_id": "sample_0009",
+    "video_path": "processed\\video_clips\\sample_0009.npy",
+    "audio_path": "processed\\mel_specs\\sample_0009.npy",
+    "threat_label": "Accident",
+    "class_id": 4,
+    "bbox": [
+      0.283,
+      0.396,
+      0.291,
+      0.206
+    ]
+  }
+]

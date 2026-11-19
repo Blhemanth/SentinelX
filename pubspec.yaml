@@ -1,0 +1,64 @@
+name: sentinel_x
+description: "Real-time Audio-Visual Urban Anomaly & Crime Detection System"
+publish_to: 'none'
+version: 0.1.0+1
+
+environment:
+  sdk: ^3.11.3
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # State Management
+  flutter_riverpod: ^2.6.1
+  riverpod_annotation: ^2.6.1
+
+  # Data & Models
+  freezed_annotation: ^2.4.4
+  json_annotation: ^4.9.0
+  equatable: ^2.0.7
+  uuid: ^4.5.1
+
+  # UI & Visualization
+  fl_chart: ^0.70.2
+  google_fonts: ^6.2.1
+  shimmer: ^3.0.0
+  percent_indicator: ^4.2.3
+  flutter_animate: ^4.5.2
+
+  # Utilities
+  intl: ^0.20.2
+  path_provider: ^2.1.5
+  collection: ^1.19.1
+
+  # ─── Backend Integration (NEW) ───────────────────
+  # HTTP client for Node.js API calls
+  http: ^1.2.2
+  # Persistent storage for JWT tokens
+  shared_preferences: ^2.3.2
+  shared_preferences_windows: ^2.4.1
+  camera: ^0.12.0+2
+  camera_windows: ^0.3.0+1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+  build_runner: ^2.4.14
+  freezed: ^2.5.7
+  json_serializable: ^6.9.4
+  riverpod_generator: ^2.6.3
+
+flutter:
+  uses-material-design: true
+
+  fonts:
+    - family: SentinelIcons
+      fonts:
+        - asset: assets/fonts/SentinelIcons.ttf
+
+  assets:
+    - assets/
+    - assets/images/
+    - assets/models/

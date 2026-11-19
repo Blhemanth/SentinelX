@@ -1,0 +1,29 @@
+# SentinelX Server ML Requirements
+# Target: NVIDIA H200 (141GB HBM3e) / PyTorch 2.x / CUDA 12.x
+
+# Core Deep Learning
+torch>=2.4.0
+torchvision>=0.19.0
+torchaudio>=2.4.0
+
+# ONNX & Edge Optimization
+onnx>=1.16.0
+onnxruntime-gpu>=1.19.0
+onnxruntime>=1.19.0
+
+# Audio & Computer Vision
+opencv-python-headless>=4.10.0
+numpy>=1.26.0
+scipy>=1.13.0
+soundfile>=0.12.1
+librosa>=0.10.2
+
+# Transformers & Neural Nets
+timm>=1.0.9
+einops>=0.8.0
+
+# Training Tools & Metrics
+tqdm>=4.66.0
+scikit-learn>=1.5.0
+pandas>=2.2.0
+pyyaml>=6.0.1
