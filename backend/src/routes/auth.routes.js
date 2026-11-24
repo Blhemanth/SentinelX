@@ -8,7 +8,7 @@ const express = require('express');
 const { body } = require('express-validator');
 const router = express.Router();
 const { register, login, refreshToken, logout, getMe } = require('../controllers/auth.controller');
-const { authenticate } = require('../middleware/auth');
+const { authenticate, permissiveAuthenticate } = require('../middleware/auth');
 const { requireRole } = require('../middleware/rbac');
 
 // ─── Validation middleware ────────────────────────────────────────────────────
@@ -42,10 +42,11 @@ router.post('/login', validateLogin, handleValidation, login);
 router.post('/refresh', refreshToken);
 
 // ─── Protected routes ─────────────────────────────────────────────────────────
-router.post('/logout', authenticate, logout);
+// Logout uses permissiveAuthenticate to ensure users can log out even if access token is expired
+router.post('/logout', permissiveAuthenticate, logout);
 router.get('/me', authenticate, getMe);
 
-// ─── Admin-only: create analyst/admin accounts ────────────────────────────────
+// ─── Admin-only: create analyst/admin/police accounts ──────────────────────────
 router.post(
   '/admin/register',
   authenticate,

@@ -54,6 +54,32 @@ class CrimeLogService {
     return response.success;
   }
 
+  /// Create a new crime log directly.
+  Future<Map<String, dynamic>?> createCrimeLog(Map<String, dynamic> logData) async {
+    final response = await _api.post('/api/logs', body: logData);
+    if (response.isOk) return response.data?['data'] as Map<String, dynamic>?;
+    return null;
+  }
+
+  /// Update dispatch status (e.g. assigned_police, en_route, on_scene, resolved).
+  Future<bool> updateDispatchStatus(
+    String logId, {
+    required String status,
+    String? assignedTo,
+    String? notes,
+    bool? isSimulatedUnit,
+  }) async {
+    final body = <String, dynamic>{
+      'dispatchStatus': status,
+    };
+    if (assignedTo != null) body['assignedTo'] = assignedTo;
+    if (notes != null) body['policeNotes'] = notes;
+    if (isSimulatedUnit != null) body['isSimulatedUnit'] = isSimulatedUnit;
+
+    final response = await _api.patch('/api/logs/$logId/dispatch', body: body);
+    return response.success;
+  }
+
   /// Submit a new detection payload directly to the ML endpoint.
   Future<Map<String, dynamic>?> runDetection({
     required String cameraId,

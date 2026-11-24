@@ -1,6 +1,7 @@
 // SentinelX - Core Data Models
 // Defines all domain entities: Camera, Detection, Alert, Threat, AudioEvent.
 
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
 // ─────────────────────────────────────────────────
@@ -164,12 +165,18 @@ class BoundingBox {
     required this.height,
   });
 
-  Rect toRect(Size canvasSize) => Rect.fromLTWH(
-    x * canvasSize.width,
-    y * canvasSize.height,
-    width * canvasSize.width,
-    height * canvasSize.height,
-  );
+  Rect toRect(Size canvasSize) {
+    final clampedX = x.clamp(0.0, 1.0);
+    final clampedY = y.clamp(0.0, 1.0);
+    final renderW = math.max(0.0, math.min(width, 1.0 - clampedX));
+    final renderH = math.max(0.0, math.min(height, 1.0 - clampedY));
+    return Rect.fromLTWH(
+      clampedX * canvasSize.width,
+      clampedY * canvasSize.height,
+      renderW * canvasSize.width,
+      renderH * canvasSize.height,
+    );
+  }
 }
 
 class Detection {

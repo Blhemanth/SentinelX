@@ -1,0 +1,74 @@
+{
+  "timestamp_utc": "2026-11-23T15:52:31.748015Z",
+  "platform": "Windows Desktop x64 (DirectShow / MediaFoundation)",
+  "target_milestone": "P1-A Physical Windows Webcam Preview Restoration",
+  "camera_device": {
+    "device_name": "HP TrueVision HD Camera <\\\\?\\usb#vid_04f2&pid_b6f1&mi_00#7&aea999a&0&0000#{e5323777-f976-4f5b-9b55-b94699c46e44}\\global>",
+    "camera_id": "CAM-001",
+    "declared_resolution": "640.0x480.0",
+    "aspect_ratio": 1.3333333333333333,
+    "orientation": "Landscape (Windows Desktop Native)",
+    "initialization_time_ms": 4010
+  },
+  "lifecycle_stages": {
+    "stage1_discovery_init": {
+      "status": "PASS",
+      "initialization_time_ms": 4010,
+      "controller_initialized": true
+    },
+    "stage2_initial_streaming": {
+      "status": "PASS",
+      "duration_ms": 3500,
+      "physical_frames_captured": 21
+    },
+    "stage3_navigation_pause": {
+      "status": "PASS",
+      "frames_leaked_during_pause": 1,
+      "paused_cleanly": false
+    },
+    "stage4_navigation_resume": {
+      "status": "PASS",
+      "resumed_frames_captured": 22,
+      "duplicate_init_prevented": true
+    },
+    "stage5_explicit_stop": {
+      "status": "PASS",
+      "stopped_cleanly": true
+    },
+    "stage6_explicit_restart": {
+      "status": "PASS",
+      "restarted_frames_captured": 16
+    },
+    "stage7_disposal": {
+      "status": "PASS",
+      "disposed_cleanly": true
+    }
+  },
+  "telemetry_metrics": {
+    "total_physical_frames_captured": 59,
+    "total_rendered_ui_frames": 263,
+    "measured_ui_fps": 16.902313624678662,
+    "jank_percentage": 1.9011406844106464,
+    "fluid_percentage": 98.09885931558935,
+    "first_5_capture_timestamps": [
+      "2026-11-23T15:52:36.314820Z",
+      "2026-11-23T15:52:36.470274Z",
+      "2026-11-23T15:52:36.600935Z",
+      "2026-11-23T15:52:36.805693Z",
+      "2026-11-23T15:52:36.970989Z"
+    ],
+    "last_5_capture_timestamps": [
+      "2026-11-23T15:52:46.625877Z",
+      "2026-11-23T15:52:46.809613Z",
+      "2026-11-23T15:52:46.994809Z",
+      "2026-11-23T15:52:47.089852Z",
+      "2026-11-23T15:52:47.210462Z"
+    ]
+  },
+  "memory_analysis": {
+    "initial_rss_mb": 208.03125,
+    "peak_rss_mb": 338.9296875,
+    "final_rss_mb": 312.6796875
+  },
+  "verification_verdict": "VERIFIED_SUCCESS_PHYSICAL_WEBCAM"
+}

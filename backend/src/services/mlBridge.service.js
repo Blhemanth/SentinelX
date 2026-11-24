@@ -5,13 +5,14 @@
  *   1. HTTP Microservice: Attempts fast REST call to FastAPI (server_ml/inference_api.py).
  *   2. Subprocess Fallback: If HTTP is offline, securely spawns `python server_ml/infer.py`
  *      using the .pth model weights in server_ml/models/sentinelx_model.pth.
+ *      Streams JSON via child.stdin to avoid OS command-line length limits (ENAMETOOLONG).
  */
 
-const { execFile } = require('child_process');
+const { spawn } = require('child_process');
 const path = require('path');
 
 const ML_SERVICE_URL = process.env.ML_SERVICE_URL || 'http://localhost:8000';
-const ML_TIMEOUT_MS = parseInt(process.env.ML_TIMEOUT_MS || '10000', 10);
+const ML_TIMEOUT_MS = parseInt(process.env.ML_TIMEOUT_MS || '15000', 10);
 
 // Resolve path to server_ml and weights
 const SERVER_ML_DIR = path.resolve(__dirname, '../../../server_ml');
@@ -20,50 +21,69 @@ const WEIGHTS_PATH = path.join(SERVER_ML_DIR, 'models', 'sentinelx_model.pth');
 
 /**
  * Execute Python inference script as a local subprocess.
+ * Uses stdin stream to support arbitrary payload sizes (base64 video/audio) on Windows/Linux.
  * @param {object} payload
  * @returns {Promise<object>} Parsed JSON result from Python stdout
  */
 const runPythonSubprocess = (payload) => {
-  return new Promise((resolve, reject) => {
+  return new Promise((resolve) => {
     const args = [
       INFER_SCRIPT,
       '--weights', WEIGHTS_PATH,
       '--camera_id', payload.camera_id || 'CAM-001',
-      '--json_input', JSON.stringify(payload),
+      '--json_input', '-',
     ];
 
-    execFile('python', args, { timeout: ML_TIMEOUT_MS, cwd: SERVER_ML_DIR }, (error, stdout, stderr) => {
-      if (error) {
-        console.warn(`[ML Bridge] Subprocess warning/error: ${stderr || error.message}`);
-      }
-      if (stdout) {
+    const child = spawn('python', args, { cwd: SERVER_ML_DIR });
+    let stdoutData = '';
+    let stderrData = '';
+
+    child.stdout.on('data', (chunk) => { stdoutData += chunk.toString(); });
+    child.stderr.on('data', (chunk) => { stderrData += chunk.toString(); });
+
+    child.on('error', (err) => {
+      console.warn(`[ML Bridge] Subprocess spawn error: ${err.message}`);
+    });
+
+    child.on('close', (code) => {
+      if (stdoutData) {
         try {
-          const parsed = JSON.parse(stdout.trim());
-          return resolve(parsed);
+          const parsed = JSON.parse(stdoutData.trim());
+          if (parsed && !parsed.error) {
+            return resolve(parsed);
+          }
         } catch (jsonErr) {
-          console.error('[ML Bridge] Failed to parse Python stdout JSON:', stdout);
+          console.error('[ML Bridge] Failed to parse Python stdout JSON:', stdoutData);
         }
       }
 
-      // Safe fallback if subprocess crashed completely
+      // Explicit fallback result indicating genuine Python inference failed
       resolve({
         threat_class: 'Normal',
-        confidence: 0.85,
+        confidence: 0.50,
+        raw_logits: [0.0, 0.0, 0.0, 0.0, 0.0],
         bbox: [0.0, 0.0, 0.0, 0.0],
-        class_probabilities: { Explosion: 0.02, Gunshot: 0.03, Fighting: 0.05, Accident: 0.05, Normal: 0.85 },
+        class_probabilities: { Explosion: 0.1, Gunshot: 0.1, Fighting: 0.1, Accident: 0.1, Normal: 0.6 },
+        detection_status: 'subprocess_fallback',
+        detection_source: 'subprocess_fallback',
+        is_fallback: true,
         device: 'fallback-safe',
         model_loaded: false,
-        inference_latency_ms: 10,
+        metrics: { video_preprocess_ms: 0, audio_preprocess_ms: 0, model_inference_ms: 0, total_latency_ms: 5 },
         model_version: '1.0.0',
       });
     });
+
+    // Write JSON payload to stdin stream to avoid command line length limits
+    child.stdin.write(JSON.stringify(payload));
+    child.stdin.end();
   });
 };
 
 /**
  * Call the Python ML inference endpoint.
  * Tries HTTP microservice first; if offline, invokes python infer.py subprocess.
- * @param {object} payload - { camera_id, video_frames, audio_data }
+ * @param {object} payload - { camera_id, video_frames, audio_data, video_path, audio_path }
  * @returns {Promise<object>} ML inference result
  */
 const callMlService = async (payload) => {
@@ -74,7 +94,7 @@ const callMlService = async (payload) => {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
-      signal: AbortSignal.timeout(2000), // Quick check (2s)
+      signal: AbortSignal.timeout(ML_TIMEOUT_MS),
     });
 
     if (response.ok) {
@@ -85,7 +105,7 @@ const callMlService = async (payload) => {
     // HTTP service offline or timed out; proceed to Strategy 2 (subprocess)
   }
 
-  // Strategy 2: Python subprocess directly using .pth weights
+  // Strategy 2: Python subprocess directly using .pth weights via stdin streaming
   return runPythonSubprocess(payload);
 };
 
@@ -96,12 +116,12 @@ const callMlService = async (payload) => {
 const checkMlHealth = async () => {
   try {
     const res = await fetch(`${ML_SERVICE_URL}/health`, {
-      signal: AbortSignal.timeout(1500),
+      signal: AbortSignal.timeout(2000),
     });
     if (res.ok) return true;
   } catch {
-    // HTTP offline; check if Python & infer.py exist
-    return true; // Subprocess is available as fallback
+    // HTTP offline; subprocess is available as fallback
+    return true;
   }
   return true;
 };

@@ -1,0 +1,36 @@
+{
+  "device_index": 0,
+  "device_name": "HP TrueVision HD Camera",
+  "target_frames": 50,
+  "initialization_time_ms": 1983.43,
+  "hardware_opened": true,
+  "native_resolution": "640x480",
+  "target_shape": [
+    16,
+    3,
+    224,
+    224
+  ],
+  "frame_latencies_ms": [
+    81.61,
+    3.98,
+    37.82,
+    34.5,
+    50.02,
+    28.04,
+    24.21,
+    32.4,
+    47.19,
+    24.57
+  ],
+  "measured_fps": 29.22,
+  "memory_usage_bytes": 2408448,
+  "dropped_frames": 34,
+  "timestamp_monotonic": true,
+  "buffer_ready_at_frame": 16,
+  "avg_latency_ms": 33.02,
+  "min_latency_ms": 3.98,
+  "max_latency_ms": 81.61,
+  "memory_usage_mb": 2.3,
+  "total_frames_captured": 50
+}

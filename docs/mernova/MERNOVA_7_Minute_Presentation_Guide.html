@@ -1,0 +1,735 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>MERNOVA - 7-Minute Presentation Guide</title>
+  <style>
+
+@page {
+  size: A4 portrait;
+  margin: 18mm 16mm 18mm 16mm;
+  @top-left {
+    content: "SENTINELX // MERNOVA COMPETITION DOCUMENTATION";
+    font-family: 'Segoe UI', Arial, sans-serif;
+    font-size: 8pt;
+    font-weight: 600;
+    color: #64748b;
+    border-bottom: 1px solid #e2e8f0;
+    padding-bottom: 4px;
+  }
+  @top-right {
+    content: "PHASE 4.3.5.1 VERIFIED";
+    font-family: 'Segoe UI', Arial, sans-serif;
+    font-size: 8pt;
+    font-weight: 700;
+    color: #0284c7;
+    border-bottom: 1px solid #e2e8f0;
+    padding-bottom: 4px;
+  }
+  @bottom-left {
+    content: "CONFIDENTIAL & PROPRIETARY — FOR MERNOVA EVALUATION ONLY";
+    font-family: 'Segoe UI', Arial, sans-serif;
+    font-size: 7.5pt;
+    color: #94a3b8;
+  }
+  @bottom-right {
+    content: "Page " counter(page);
+    font-family: 'Segoe UI', Arial, sans-serif;
+    font-size: 8pt;
+    font-weight: 600;
+    color: #64748b;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, 'Inter', Roboto, sans-serif;
+  color: #1e293b;
+  background: #ffffff;
+  font-size: 10pt;
+  line-height: 1.55;
+  margin: 0;
+  padding: 0;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+
+/* Headings */
+h1, h2, h3, h4, h5 {
+  color: #0f172a;
+  font-weight: 700;
+  margin-top: 1.4em;
+  margin-bottom: 0.5em;
+  line-height: 1.25;
+}
+
+h1 {
+  font-size: 20pt;
+  color: #032b43;
+  border-bottom: 2px solid #0284c7;
+  padding-bottom: 6px;
+  margin-top: 0;
+}
+
+h2 {
+  font-size: 14pt;
+  color: #0f172a;
+  border-bottom: 1px solid #cbd5e1;
+  padding-bottom: 4px;
+  page-break-after: avoid;
+}
+
+h3 {
+  font-size: 11.5pt;
+  color: #0369a1;
+  margin-top: 1.2em;
+  page-break-after: avoid;
+}
+
+h4 {
+  font-size: 10pt;
+  color: #334155;
+  margin-top: 1em;
+  page-break-after: avoid;
+}
+
+p {
+  margin: 0.6em 0;
+  text-align: justify;
+}
+
+/* Document Cover / Header Banner */
+.doc-header {
+  background: linear-gradient(135deg, #0a192f 0%, #0f3254 100%);
+  color: #ffffff;
+  padding: 20px 24px;
+  border-radius: 8px;
+  margin-bottom: 24px;
+  border-left: 6px solid #00f2fe;
+}
+
+.doc-header h1 {
+  color: #ffffff;
+  border-bottom: none;
+  font-size: 22pt;
+  margin: 0 0 4px 0;
+  padding: 0;
+  letter-spacing: -0.5px;
+}
+
+.doc-header .subtitle {
+  font-size: 11pt;
+  color: #38bdf8;
+  font-weight: 500;
+  margin-bottom: 12px;
+}
+
+.doc-header .meta-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+  background: rgba(255, 255, 255, 0.08);
+  padding: 10px 14px;
+  border-radius: 6px;
+  font-size: 8.5pt;
+}
+
+.doc-header .meta-item strong {
+  display: block;
+  color: #94a3b8;
+  text-transform: uppercase;
+  font-size: 7pt;
+  letter-spacing: 0.5px;
+}
+
+.doc-header .meta-item span {
+  color: #ffffff;
+  font-weight: 600;
+}
+
+/* Badges */
+.badge {
+  display: inline-block;
+  padding: 2px 7px;
+  border-radius: 4px;
+  font-size: 7.5pt;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin: 0 2px;
+}
+
+.badge-verified {
+  background: #dcfce7;
+  color: #166534;
+  border: 1px solid #86efac;
+}
+
+.badge-conditional {
+  background: #fef3c7;
+  color: #92400e;
+  border: 1px solid #fcd34d;
+}
+
+.badge-unvalidated {
+  background: #ffedd5;
+  color: #9a3412;
+  border: 1px solid #fdba74;
+}
+
+.badge-planned {
+  background: #e0f2fe;
+  color: #0369a1;
+  border: 1px solid #7dd3fc;
+}
+
+.badge-untested {
+  background: #f1f5f9;
+  color: #475569;
+  border: 1px solid #cbd5e1;
+}
+
+.badge-danger {
+  background: #fee2e2;
+  color: #991b1b;
+  border: 1px solid #fca5a5;
+}
+
+/* Dual-Perspective Explanation Cards */
+.dual-container {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin: 14px 0;
+  page-break-inside: avoid;
+}
+
+.perspective-card {
+  padding: 12px 14px;
+  border-radius: 6px;
+  font-size: 9pt;
+  line-height: 1.5;
+}
+
+.card-beginner {
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  border-left: 4px solid #16a34a;
+}
+
+.card-beginner h4 {
+  color: #15803d;
+  margin: 0 0 6px 0;
+  font-size: 9.5pt;
+  display: flex;
+  align-items: center;
+}
+
+.card-technical {
+  background: #f0f9ff;
+  border: 1px solid #bae6fd;
+  border-left: 4px solid #0284c7;
+}
+
+.card-technical h4 {
+  color: #0369a1;
+  margin: 0 0 6px 0;
+  font-size: 9.5pt;
+  display: flex;
+  align-items: center;
+}
+
+/* Callout Boxes */
+.callout {
+  padding: 10px 14px;
+  border-radius: 6px;
+  margin: 12px 0;
+  font-size: 9pt;
+  page-break-inside: avoid;
+}
+
+.callout-info {
+  background: #f8fafc;
+  border-left: 4px solid #0284c7;
+  border-top: 1px solid #e2e8f0;
+  border-right: 1px solid #e2e8f0;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.callout-warning {
+  background: #fffbeb;
+  border-left: 4px solid #d97706;
+  border-top: 1px solid #fef3c7;
+  border-right: 1px solid #fef3c7;
+  border-bottom: 1px solid #fef3c7;
+}
+
+.callout-danger {
+  background: #fef2f2;
+  border-left: 4px solid #dc2626;
+  border-top: 1px solid #fee2e2;
+  border-right: 1px solid #fee2e2;
+  border-bottom: 1px solid #fee2e2;
+}
+
+.callout-success {
+  background: #f0fdf4;
+  border-left: 4px solid #16a34a;
+  border-top: 1px solid #dcfce7;
+  border-right: 1px solid #dcfce7;
+  border-bottom: 1px solid #dcfce7;
+}
+
+/* Tables */
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 12px 0;
+  font-size: 8.5pt;
+  page-break-inside: auto;
+}
+
+tr {
+  page-break-inside: avoid;
+  page-break-after: auto;
+}
+
+th, td {
+  border: 1px solid #cbd5e1;
+  padding: 6px 10px;
+  text-align: left;
+  vertical-align: top;
+}
+
+th {
+  background: #f1f5f9;
+  color: #1e293b;
+  font-weight: 700;
+  font-size: 8pt;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+tr:nth-child(even) td {
+  background: #f8fafc;
+}
+
+/* Code & Architecture Diagrams */
+pre, code {
+  font-family: 'Cascadia Code', 'Consolas', 'Courier New', monospace;
+  font-size: 8pt;
+}
+
+code {
+  background: #f1f5f9;
+  color: #0f172a;
+  padding: 1px 4px;
+  border-radius: 3px;
+}
+
+pre {
+  background: #0f172a;
+  color: #f8fafc;
+  padding: 12px 14px;
+  border-radius: 6px;
+  overflow-x: auto;
+  line-height: 1.4;
+  margin: 10px 0;
+  border: 1px solid #334155;
+  page-break-inside: avoid;
+}
+
+.diagram-box {
+  background: #09101d;
+  color: #38bdf8;
+  border: 1px solid #1e293b;
+  border-left: 4px solid #00f2fe;
+  padding: 12px 16px;
+  border-radius: 6px;
+  font-family: 'Cascadia Code', monospace;
+  font-size: 7.5pt;
+  line-height: 1.35;
+  margin: 12px 0;
+  white-space: pre;
+  overflow-x: auto;
+  page-break-inside: avoid;
+}
+
+/* Speaker Script Specific Styling */
+.speaker-cue {
+  display: flex;
+  align-items: center;
+  background: #e0f2fe;
+  color: #0369a1;
+  padding: 4px 10px;
+  border-radius: 4px;
+  font-weight: 700;
+  font-size: 9pt;
+  margin: 12px 0 6px 0;
+  border-left: 4px solid #0284c7;
+}
+
+.cue-time {
+  background: #0284c7;
+  color: #ffffff;
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-size: 7.5pt;
+  margin-right: 8px;
+}
+
+.speaking-text {
+  background: #ffffff;
+  border-left: 3px solid #cbd5e1;
+  padding: 6px 14px;
+  margin: 4px 0 10px 0;
+  font-size: 9.5pt;
+  font-style: normal;
+  color: #1e293b;
+}
+
+.speaking-text strong {
+  color: #0f172a;
+}
+
+.slide-transition {
+  background: #fef3c7;
+  color: #92400e;
+  padding: 4px 10px;
+  border-radius: 4px;
+  font-size: 8pt;
+  font-weight: 600;
+  margin: 8px 0;
+  border: 1px dashed #f59e0b;
+}
+
+.contingency-box {
+  background: #fff1f2;
+  border: 1px solid #fecdd3;
+  border-left: 4px solid #e11d48;
+  padding: 8px 12px;
+  border-radius: 6px;
+  margin: 10px 0;
+  font-size: 8.5pt;
+}
+
+.contingency-box strong {
+  color: #9f1239;
+}
+
+/* Q&A Item */
+.qa-item {
+  margin: 12px 0;
+  padding: 10px 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  background: #ffffff;
+  page-break-inside: avoid;
+}
+
+.qa-question {
+  font-weight: 700;
+  color: #0f172a;
+  font-size: 9.5pt;
+  margin-bottom: 4px;
+  display: flex;
+}
+
+.qa-q-num {
+  color: #0284c7;
+  font-weight: 800;
+  margin-right: 8px;
+  min-width: 32px;
+}
+
+.qa-answer {
+  color: #334155;
+  font-size: 9pt;
+  line-height: 1.5;
+  padding-left: 40px;
+}
+
+.qa-defense-tip {
+  margin-top: 6px;
+  padding: 4px 8px;
+  background: #f8fafc;
+  border-left: 3px solid #0284c7;
+  font-size: 8pt;
+  color: #475569;
+}
+
+/* Page Control Classes */
+.page-break {
+  page-break-before: always;
+}
+
+.no-break {
+  page-break-inside: avoid;
+}
+
+.section-toc {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  padding: 12px 18px;
+  margin: 16px 0;
+}
+
+.section-toc ol {
+  margin: 0;
+  padding-left: 20px;
+}
+
+.section-toc li {
+  margin: 4px 0;
+  font-size: 8.5pt;
+  color: #334155;
+}
+
+  </style>
+</head>
+<body>
+
+<div class="doc-header">
+  <h1>MERNOVA // 7-MINUTE PRESENTATION GUIDE</h1>
+  <div class="subtitle">Complete Slide-by-Slide Strategy, Timing Roadmap & Visual Execution Plan</div>
+  <div class="meta-grid">
+    <div class="meta-item"><strong>Event</strong><span>MERNOVA Competition</span></div>
+    <div class="meta-item"><strong>Total Time</strong><span>7:00 Minutes Strict</span></div>
+    <div class="meta-item"><strong>Team Format</strong><span>3 Presenters</span></div>
+    <div class="meta-item"><strong>Structure</strong><span>Presentation + Live Demo</span></div>
+  </div>
+</div>
+
+<div class="callout callout-info">
+  <strong>Provisional Timing Framework (7:00 Total):</strong><br>
+  • <strong>0:00–0:40 (40s):</strong> Opening, Hook & Problem Statement (Presenter 1)<br>
+  • <strong>0:40–1:30 (50s):</strong> Proposed Solution & Architectural Innovation (Presenter 1)<br>
+  • <strong>1:30–2:20 (50s):</strong> End-to-End System Architecture & Edge AI (Presenter 2)<br>
+  • <strong>2:20–4:40 (140s / 2m20s):</strong> Live System Demonstration (Presenter 3 + Team)<br>
+  • <strong>4:40–5:40 (60s):</strong> Empirical Verification, Performance & Limitations (Presenter 3)<br>
+  • <strong>5:40–6:35 (55s):</strong> Real-World Impact, Practical Deployment & Roadmap (Presenter 3)<br>
+  • <strong>6:35–7:00 (25s):</strong> Conclusion, Call to Action & Jury Handoff (Presenter 3)
+</div>
+
+<!-- ========================================================================= -->
+<h2>Slide-by-Slide Detailed Specifications</h2>
+
+<!-- SLIDE 1 -->
+<div class="callout callout-info" style="border-left-color: #0284c7;">
+  <h3>SLIDE 1 // Title, Team & Project Identity</h3>
+  <table>
+    <tr><th style="width: 20%;">Presenter</th><td><strong>Presenter 1</strong> (Lead Introduction)</td></tr>
+    <tr><th>Time Window</th><td><strong>0:00 – 0:15</strong> (15 Seconds)</td></tr>
+    <tr><th>Slide Title</th><td><strong>SentinelX: Edge-to-Cloud Surveillance Anomaly Detection & Incident Response</strong></td></tr>
+    <tr><th>Slide Text</th><td>
+      • <strong>Automated Multi-Modal Threat Detection for High-Density Public Infrastructure</strong><br>
+      • Presenting Team: Presenter 1, Presenter 2, Presenter 3<br>
+      • Event: MERNOVA Final Evaluation<br>
+      • Technology: Flutter Desktop x64 • Node.js Express • MongoDB • React 19 • Native ONNX Runtime
+    </td></tr>
+    <tr><th>Recommended Visual</th><td>
+      Full-bleed dark cyberpunk theme with SentinelX shield logo, electric cyan accents, and subtle animated waveform backdrop. Clean typography.
+    </td></tr>
+    <tr><th>Main Takeaway</th><td>Professional, enterprise-grade engineering identity combining edge AI with full-stack emergency response.</td></tr>
+    <tr><th>Verbal Transition</th><td><em>"Every single day, thousands of security cameras record critical incidents—yet almost all of them go unnoticed until it is too late. Here is why."</em></td></tr>
+  </table>
+</div>
+
+<!-- SLIDE 2 -->
+<div class="callout callout-info" style="border-left-color: #0284c7;">
+  <h3>SLIDE 2 // The Critical Problem: The Surveillance Blind Spot</h3>
+  <table>
+    <tr><th style="width: 20%;">Presenter</th><td><strong>Presenter 1</strong></td></tr>
+    <tr><th>Time Window</th><td><strong>0:15 – 0:40</strong> (25 Seconds)</td></tr>
+    <tr><th>Slide Title</th><td><strong>The Fatal Gap in Modern Physical Surveillance</strong></td></tr>
+    <tr><th>Slide Text</th><td>
+      • <strong>Cognitive Saturation:</strong> Security operators miss >90% of anomalies after 20 minutes of multi-camera monitoring.<br>
+      • <strong>Detection-to-Dispatch Lag:</strong> Real-world response time averages 4–12 minutes from incident occurrence.<br>
+      • <strong>Cloud Bandwidth Bottleneck:</strong> Continuous 4K streaming to cloud costs \$150+/camera/month and exposes private video feeds.<br>
+      • <strong>Disconnected Emergency Workflows:</strong> Disjointed camera networks force manual phone reporting to law enforcement CAD desks.
+    </td></tr>
+    <tr><th>Recommended Visual</th><td>
+      Three stark metric cards with red warning highlights: <strong>"90% Miss Rate"</strong>, <strong>"8.5 Min Delay"</strong>, and <strong>"\$100B+ Industry Loss"</strong>.
+    </td></tr>
+    <tr><th>Main Takeaway</th><td>The core failure is not a lack of cameras, but the human cognitive impossibility of watching hundreds of streams simultaneously.</td></tr>
+    <tr><th>Verbal Transition</th><td><em>"We built SentinelX to close this gap by placing autonomous intelligence directly at the camera edge."</em></td></tr>
+  </table>
+</div>
+
+<!-- SLIDE 3 -->
+<div class="callout callout-info" style="border-left-color: #0284c7;">
+  <h3>SLIDE 3 // The SentinelX Solution & System Architecture</h3>
+  <table>
+    <tr><th style="width: 20%;">Presenter</th><td><strong>Presenter 1</strong></td></tr>
+    <tr><th>Time Window</th><td><strong>0:40 – 1:05</strong> (25 Seconds)</td></tr>
+    <tr><th>Slide Title</th><td><strong>SentinelX: Edge Intelligence Meets Centralized Operations</strong></td></tr>
+    <tr><th>Slide Text</th><td>
+      • <strong>Decentralized Edge AI:</strong> Native ONNX Runtime forward passes evaluate video temporal tensors on-premise without cloud streaming.<br>
+      • <strong>Spatio-Temporal Anomaly Detection:</strong> Evaluates 16-frame rolling temporal sequences to capture physical motion dynamics.<br>
+      • <strong>Instant Dispatch Telemetry:</strong> Anomaly alerts sync sub-second to a unified Emergency Operations Center (EOC).<br>
+      • <strong>Human-in-the-Loop Triage:</strong> Operators verify AI alerts with one-click dispatch escalation, eliminating false police deployments.
+    </td></tr>
+    <tr><th>Recommended Visual</th><td>
+      Split graphic: Left side shows edge camera device processing video locally; right side shows EOC dashboard receiving structured alerts in real time.
+    </td></tr>
+    <tr><th>Main Takeaway</th><td>SentinelX combines private edge computing with centralized operations to provide automated detection without privacy compromise.</td></tr>
+    <tr><th>Verbal Transition</th><td><em>"What sets SentinelX apart from typical computer vision projects is our hardened, enterprise-grade engineering. Let's look under the hood."</em></td></tr>
+  </table>
+</div>
+
+<!-- SLIDE 4 -->
+<div class="callout callout-info" style="border-left-color: #0284c7;">
+  <h3>SLIDE 4 // Key Innovations & Competitive Differentiation</h3>
+  <table>
+    <tr><th style="width: 20%;">Presenter</th><td><strong>Presenter 1</strong></td></tr>
+    <tr><th>Time Window</th><td><strong>1:05 – 1:30</strong> (25 Seconds)</td></tr>
+    <tr><th>Slide Title</th><td><strong>Why SentinelX Outperforms Conventional Solutions</strong></td></tr>
+    <tr><th>Slide Text</th><td>
+      • <strong>True Zero-UI-Freeze Architecture:</strong> Heavy AI runs in dedicated Dart background isolates; UI remains locked at fluid 60 Hz.<br>
+      • <strong>Cryptographic Protocol v2 HMAC Boundaries:</strong> Zero internal secrets in client apps; requests bound to HTTP method, path, and body hash.<br>
+      • <strong>Drill Simulation Isolation:</strong> Police CAD dispatch routes enforce cryptographic isolation—training drills cannot trigger real dispatches.<br>
+      • <strong>Multimodal Ready Contract:</strong> Unified 16-frame video + 128-band spectrogram tensor ingestion pipeline.
+    </td></tr>
+    <tr><th>Recommended Visual</th><td>
+      Four modern icon badges: [Isolated Isolate AI] [Protocol v2 HMAC] [Zero Cloud Video Stream] [Safety CAD Guard].
+    </td></tr>
+    <tr><th>Main Takeaway</th><td>SentinelX is not a prototype script—it is an enterprise architecture designed with security boundaries and safety fail-safes.</td></tr>
+    <tr><th>Verbal Transition</th><td><em>"Now, Presenter 2 will walk you through our end-to-end multi-platform architecture."</em></td></tr>
+  </table>
+</div>
+
+<!-- SLIDE 5 -->
+<div class="page-break"></div>
+<div class="callout callout-info" style="border-left-color: #0284c7;">
+  <h3>SLIDE 5 // End-to-End System Architecture</h3>
+  <table>
+    <tr><th style="width: 20%;">Presenter</th><td><strong>Presenter 2</strong> (Technical & ML Lead)</td></tr>
+    <tr><th>Time Window</th><td><strong>1:30 – 1:55</strong> (25 Seconds)</td></tr>
+    <tr><th>Slide Title</th><td><strong>Full-Stack MERN + Flutter + ONNX + Python Architecture</strong></td></tr>
+    <tr><th>Slide Text</th><td>
+      • <strong>Edge Client (Flutter Desktop x64):</strong> DirectShow webcam capture, 16-frame ring buffer, native ONNX C-FFI isolate worker.<br>
+      • <strong>Web Portal (React 19 + Vite):</strong> Real-time EOC incident triage, dispatch progression, and interactive map.<br>
+      • <strong>Backend API (Node.js Express):</strong> Dual-token JWT auth, RBAC, Protocol v2 HMAC verification, and Mongoose pre-save safety triage.<br>
+      • <strong>Database (MongoDB 7.0):</strong> Unified incident log collection with strict schemas and atomic status updates.<br>
+      • <strong>Server ML (FastAPI + PyTorch):</strong> Microservice and subprocess fallback pipeline with multi-format PCM WAV audio validation.
+    </td></tr>
+    <tr><th>Recommended Visual</th><td>
+      High-resolution architectural block diagram showing Flutter, Express, React, MongoDB, and Python ML microservices with encrypted connections.
+    </td></tr>
+    <tr><th>Main Takeaway</th><td>Clean multi-platform separation where each tier handles its optimal task: Flutter at the edge, React at the desk, Express at the core.</td></tr>
+    <tr><th>Verbal Transition</th><td><em>"Let's look specifically at how we solved the hardest edge problem: running neural networks on desktop without UI lag."</em></td></tr>
+  </table>
+</div>
+
+<!-- SLIDE 6 -->
+<div class="callout callout-info" style="border-left-color: #0284c7;">
+  <h3>SLIDE 6 // Edge AI: Native ONNX Runtime & Background Isolates</h3>
+  <table>
+    <tr><th style="width: 20%;">Presenter</th><td><strong>Presenter 2</strong></td></tr>
+    <tr><th>Time Window</th><td><strong>1:55 – 2:20</strong> (25 Seconds)</td></tr>
+    <tr><th>Slide Title</th><td><strong>Isolate-Driven Native ONNX C-FFI Execution</strong></td></tr>
+    <tr><th>Slide Text</th><td>
+      • <strong>The Problem:</strong> Synchronous native inference takes ~1,680 ms on CPU, locking the UI and causing severe application freeze.<br>
+      • <strong>The Solution:</strong> <code>OnnxInferenceWorker</code> spawned on an isolated Dart background thread using Microsoft ONNX Runtime C-FFI.<br>
+      • <strong>Temporal Tensor Construction:</strong> Ring buffer builds [1, 16, 3, 224, 224] Float32 tensor ($9.63	ext{ MB}$) transferred via SendPort in 5.0 ms.<br>
+      • <strong>Strict Memory Hygiene:</strong> 25-cycle lifecycle validation shows zero leak plateauing with net drift of $-6.79	ext{ MB}$.
+    </td></tr>
+    <tr><th>Recommended Visual</th><td>
+      Thread isolation diagram showing Main UI Thread (smooth 60 Hz vsync) communicating asynchronously with Worker Isolate (ONNX AVX2 execution).
+    </td></tr>
+    <tr><th>Main Takeaway</th><td>The application maintains fluid 60 Hz responsiveness regardless of model latency, eliminating operator distraction.</td></tr>
+    <tr><th>Verbal Transition</th><td><em>"Now, let's see SentinelX running live on actual hardware. Over to Presenter 3 for the live demonstration."</em></td></tr>
+  </table>
+</div>
+
+<!-- SLIDE 7 -->
+<div class="callout callout-info" style="border-left-color: #0284c7;">
+  <h3>SLIDE 7 // Live Demonstration: Controlled Drill Simulation & Triage</h3>
+  <table>
+    <tr><th style="width: 20%;">Presenter</th><td><strong>Presenter 3</strong> (Demo & Results Lead)</td></tr>
+    <tr><th>Time Window</th><td><strong>2:20 – 4:40</strong> (140 Seconds / 2 Minutes 20 Seconds)</td></tr>
+    <tr><th>Slide Title</th><td><strong>Live System Demonstration: Physical Edge to Central EOC</strong></td></tr>
+    <tr><th>Slide Text</th><td>
+      • <strong>Screen 1 (Flutter Desktop):</strong> Live physical capture via HP TrueVision HD Camera, temporal buffer telemetry, Cyberpunk HUD.<br>
+      • <strong>Screen 2 (React 19 EOC):</strong> Central operations incident monitor with live sync, status badges, and dispatch controls.<br>
+      • <strong>Controlled Drill Exercise:</strong> Trigger a demonstration incident; verify instant database persistence and cross-client reflection.<br>
+      • <strong>Dispatch Progression:</strong> Progress incident from <code>unassigned</code> → <code>assigned_police</code> → <code>en_route</code> → <code>resolved</code>.
+    </td></tr>
+    <tr><th>Recommended Visual</th><td>
+      Live projection split: Left side showing Flutter Desktop window with live video feed; right side showing React Web Browser with EOC portal.
+    </td></tr>
+    <tr><th>Main Takeaway</th><td>SentinelX is a functioning, integrated, multi-client system executing in real time on physical hardware right before the judges' eyes.</td></tr>
+    <tr><th>Verbal Transition</th><td><em>"As demonstrated, the entire pipeline is operational. Now, let's look at the rigorous empirical verification behind it."</em></td></tr>
+  </table>
+</div>
+
+<!-- SLIDE 8 -->
+<div class="page-break"></div>
+<div class="callout callout-info" style="border-left-color: #0284c7;">
+  <h3>SLIDE 8 // Empirical Verification & Reconciled Performance</h3>
+  <table>
+    <tr><th style="width: 20%;">Presenter</th><td><strong>Presenter 3</strong></td></tr>
+    <tr><th>Time Window</th><td><strong>4:40 – 5:40</strong> (60 Seconds)</td></tr>
+    <tr><th>Slide Title</th><td><strong>Independently Verified Performance Baseline</strong></td></tr>
+    <tr><th>Slide Text</th><td>
+      • <strong>10-Minute Sustained Hardware Test:</strong> 600.0s run on HP TrueVision camera; 4,399 frames ingested (7.33 FPS) with zero crashes.<br>
+      • <strong>Zero UI Blocking:</strong> 13,355 engine frames rendered; 97.53% fluid presentation rate with only 2.47% compositor jank.<br>
+      • <strong>Memory Stability:</strong> Reaches bounded plateau (Peak 873 MB → Final 417 MB) actively reclaimed by Dart VM generational GC.<br>
+      • <strong>Comprehensive Regression:</strong> <strong>238 / 238 tests passing (100%)</strong> across 18 test suites in Flutter, Node.js, and Python ML.
+    </td></tr>
+    <tr><th>Recommended Visual</th><td>
+      Clean metric dashboard table comparing Phase 4.3.5.1 verified numbers against industry performance baselines, highlighted in emerald green.
+    </td></tr>
+    <tr><th>Main Takeaway</th><td>All claims are backed by rigorous, reconciled empirical benchmarks and reproducible automated test suites.</td></tr>
+    <tr><th>Verbal Transition</th><td><em>"We believe in absolute engineering honesty. Let's explicitly discuss our current limitations and future scope."</em></td></tr>
+  </table>
+</div>
+
+<!-- SLIDE 9 -->
+<div class="callout callout-info" style="border-left-color: #0284c7;">
+  <h3>SLIDE 9 // Responsible Disclosure: Limitations & Phase 4.4 Roadmap</h3>
+  <table>
+    <tr><th style="width: 20%;">Presenter</th><td><strong>Presenter 3</strong></td></tr>
+    <tr><th>Time Window</th><td><strong>5:40 – 6:35</strong> (55 Seconds)</td></tr>
+    <tr><th>Slide Title</th><td><strong>Engineering Transparency & Next Development Milestones</strong></td></tr>
+    <tr><th>Slide Text</th><td>
+      • <strong>Current Limitation (Degraded Mode):</strong> Edge model evaluates video frames against a calibrated $-80.0	ext{ dB}$ silence baseline.<br>
+      • <strong>Phase 4.4 Milestone:</strong> Live hardware microphone audio ingestion and on-premise distress keyword spotter integration.<br>
+      • <strong>GPU Acceleration:</strong> DirectML integration planned to boost inference throughput from 0.4 FPS (CPU) to >10 FPS (GPU).<br>
+      • <strong>Privacy by Design:</strong> Zero facial recognition, zero biometric tracking; fully GDPR/CCPA compliant motion dynamics.
+    </td></tr>
+    <tr><th>Recommended Visual</th><td>
+      Timeline roadmap showing Phase 4.3.5.1 (Complete) → Phase 4.4 (Live Audio & KWS) → Phase 5.0 (DirectML & Clustered Redis EOC).
+    </td></tr>
+    <tr><th>Main Takeaway</th><td>Mature engineering teams disclose current operating boundaries honestly and present concrete, measurable milestones for completion.</td></tr>
+    <tr><th>Verbal Transition</th><td><em>"In conclusion, SentinelX transforms passive video surveillance into proactive physical safety."</em></td></tr>
+  </table>
+</div>
+
+<!-- SLIDE 10 -->
+<div class="callout callout-info" style="border-left-color: #0284c7;">
+  <h3>SLIDE 10 // Conclusion & Call to Action</h3>
+  <table>
+    <tr><th style="width: 20%;">Presenter</th><td><strong>Presenter 3</strong> (Supported by Team)</td></tr>
+    <tr><th>Time Window</th><td><strong>6:35 – 7:00</strong> (25 Seconds)</td></tr>
+    <tr><th>Slide Title</th><td><strong>Transforming Surveillance from Passive Recording to Active Protection</strong></td></tr>
+    <tr><th>Slide Text</th><td>
+      • <strong>Sub-Second Anomaly Detection:</strong> Moving from 10-minute human response lags to immediate operator alerting.<br>
+      • <strong>Enterprise Ready Architecture:</strong> Full MERN + Flutter multi-platform stack with Protocol v2 HMAC security boundaries.<br>
+      • <strong>Proven Reliability:</strong> 10-minute continuous hardware validation and 238 automated passing tests.<br>
+      • <em>"Thank you, judges. We are now open for technical questions and answers."</em>
+    </td></tr>
+    <tr><th>Recommended Visual</th><td>
+      High-impact summary card with team photo/placeholders, GitHub repository QR code, contact information, and "Q&A Ready" badge.
+    </td></tr>
+    <tr><th>Main Takeaway</th><td>Memorable, confident closing positioning SentinelX as a competitive, technically sound, and ethically grounded security innovation.</td></tr>
+    <tr><th>Verbal Transition</th><td>Handoff to judges for technical Q&A session.</td></tr>
+  </table>
+</div>
+
+</body>
+</html>

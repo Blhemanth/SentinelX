@@ -455,6 +455,110 @@ class _MultiCameraGrid extends ConsumerWidget {
     {'id': 'CAM-002', 'name': 'Phone Camera 2 (Wireless IP Stream)'},
   ];
 
+  Future<void> _confirmAndTriggerDistressDrill(
+    BuildContext context,
+    WidgetRef ref, {
+    required String cameraId,
+    required String cameraName,
+  }) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: SentinelColors.bgCard,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(10),
+          side: const BorderSide(color: SentinelColors.threatCritical, width: 1.5),
+        ),
+        title: Row(
+          children: [
+            const Icon(Icons.warning_amber_rounded, color: SentinelColors.threatCritical, size: 22),
+            const SizedBox(width: 8),
+            Text(
+              'CONFIRM DISTRESS DRILL',
+              style: SentinelTypography.titleMedium.copyWith(
+                color: SentinelColors.textPrimary,
+                fontWeight: FontWeight.bold,
+                fontSize: 14,
+                letterSpacing: 1.1,
+              ),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Initiating a simulated emergency distress drill on camera [$cameraId]. A simulation incident will be persisted to MongoDB for training and audit review.',
+              style: SentinelTypography.bodyMedium.copyWith(color: SentinelColors.textSecondary, fontSize: 12),
+            ),
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: SentinelColors.bgSurface,
+                borderRadius: BorderRadius.circular(6),
+                border: Border.all(color: SentinelColors.glassBorder),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'CAPABILITY & DRILL ISOLATION NOTICE:',
+                    style: SentinelTypography.monoSmall.copyWith(
+                      color: SentinelColors.threatCritical,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 10,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    '• Voice Keyword Spotting: Offline (Manual SOS Drill Mode)\n'
+                    '• Isolation: Blocked from live police dispatch\n'
+                    '• Backend Persistence: Saved as isSimulation: true with MongoDB ObjectId',
+                    style: SentinelTypography.bodySmall.copyWith(
+                      color: SentinelColors.textSecondary,
+                      fontSize: 11,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: Text(
+              'CANCEL',
+              style: SentinelTypography.bodySmall.copyWith(color: SentinelColors.textSecondary),
+            ),
+          ),
+          ElevatedButton.icon(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            icon: const Icon(Icons.play_arrow, size: 16),
+            label: const Text('START DISTRESS DRILL'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: SentinelColors.threatCritical,
+              foregroundColor: Colors.white,
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true && context.mounted) {
+      final drillIncident = await ref.read(incidentDispatchProvider.notifier).triggerDistressDrill(
+            cameraId: cameraId,
+            cameraName: cameraName,
+          );
+      ref.read(mockInferenceServiceProvider).triggerTestThreat('Acoustic Distress: HELP, HELP');
+      if (drillIncident != null && context.mounted) {
+        ControlRoomIncidentModal.show(context, drillIncident);
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final activePayload =
@@ -598,7 +702,7 @@ class _MultiCameraGrid extends ConsumerWidget {
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    'ACOUSTIC SURVEILLANCE: Say "HELP, HELP" or tap trigger to record incident clip for Control Room & Police',
+                    'ACOUSTIC PIPELINE: Realtek 16 kHz PCM Active • Voice Keyword Spotting: Offline (Manual SOS Trigger)',
                     style: SentinelTypography.monoSmall.copyWith(
                       color: SentinelColors.textSecondary,
                       fontSize: 10,
@@ -606,13 +710,12 @@ class _MultiCameraGrid extends ConsumerWidget {
                   ),
                 ),
                 InkWell(
-                  onTap: () {
-                    ref.read(incidentDispatchProvider.notifier).triggerDistress(
-                      cameraId: selectedCameraId,
-                      cameraName: selectedCamInfo['name'],
-                    );
-                    ref.read(mockInferenceServiceProvider).triggerTestThreat('Acoustic Distress: HELP, HELP');
-                  },
+                  onTap: () => _confirmAndTriggerDistressDrill(
+                    context,
+                    ref,
+                    cameraId: selectedCameraId,
+                    cameraName: selectedCamInfo['name'] ?? 'Laptop Camera 1',
+                  ),
                   borderRadius: BorderRadius.circular(4),
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
@@ -626,7 +729,7 @@ class _MultiCameraGrid extends ConsumerWidget {
                         const Icon(Icons.record_voice_over, color: Colors.white, size: 12),
                         const SizedBox(width: 4),
                         Text(
-                          'TRIGGER "HELP, HELP"',
+                          'TRIGGER DISTRESS DRILL',
                           style: SentinelTypography.monoSmall.copyWith(
                             color: Colors.white,
                             fontWeight: FontWeight.bold,
@@ -648,17 +751,30 @@ class _MultiCameraGrid extends ConsumerWidget {
               margin: const EdgeInsets.only(bottom: 6),
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
               decoration: BoxDecoration(
-                color: SentinelColors.threatCritical.withValues(alpha: 0.2),
+                color: (pendingDistress.isDrillSimulation
+                        ? SentinelColors.threatMedium
+                        : SentinelColors.threatCritical)
+                    .withValues(alpha: 0.2),
                 borderRadius: BorderRadius.circular(5),
-                border: Border.all(color: SentinelColors.threatCritical, width: 1.5),
+                border: Border.all(
+                  color: pendingDistress.isDrillSimulation
+                      ? SentinelColors.threatMedium
+                      : SentinelColors.threatCritical,
+                  width: 1.5,
+                ),
               ),
               child: Row(
                 children: [
-                  const PulsingDot(color: SentinelColors.threatCritical, size: 8),
+                  PulsingDot(
+                    color: pendingDistress.isDrillSimulation
+                        ? SentinelColors.threatMedium
+                        : SentinelColors.threatCritical,
+                    size: 8,
+                  ),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
-                      '🚨 CONTROL ROOM ALERT: ${pendingDistress.threatType} on ${pendingDistress.cameraId}',
+                      '${pendingDistress.isDrillSimulation ? "🎯 [DRILL SIMULATION]" : "🚨 CONTROL ROOM ALERT"}: ${pendingDistress.threatType} on ${pendingDistress.cameraId}',
                       style: SentinelTypography.monoSmall.copyWith(
                         color: Colors.white,
                         fontWeight: FontWeight.bold,
@@ -670,10 +786,19 @@ class _MultiCameraGrid extends ConsumerWidget {
                     onPressed: () {
                       ControlRoomIncidentModal.show(context, pendingDistress);
                     },
-                    icon: const Icon(Icons.play_circle_fill, size: 12),
-                    label: const Text('VIEW RECORDED CLIP & ASSIGN TO POLICE'),
+                    icon: Icon(
+                      pendingDistress.isDrillSimulation ? Icons.model_training : Icons.warning_amber_rounded,
+                      size: 12,
+                    ),
+                    label: Text(
+                      pendingDistress.isDrillSimulation
+                          ? 'VIEW DRILL & DISPATCH TO SIMULATED UNIT'
+                          : 'INSPECT INCIDENT & DISPATCH TO POLICE',
+                    ),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: SentinelColors.threatCritical,
+                      backgroundColor: pendingDistress.isDrillSimulation
+                          ? SentinelColors.threatMedium
+                          : SentinelColors.threatCritical,
                       foregroundColor: Colors.white,
                       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                     ),
@@ -716,17 +841,16 @@ class _MultiCameraGrid extends ConsumerWidget {
                   ),
                   const SizedBox(width: 6),
                   _buildDrillChip(
-                    label: '🎙️ HELP, HELP (VOICE DISTRESS)',
+                    label: '🎯 SOS DISTRESS DRILL',
                     color: SentinelColors.threatCritical,
                     icon: Icons.record_voice_over,
                     isSelected: activePayload?.threatType.contains('HELP') ?? false,
-                    onTap: () {
-                      ref.read(incidentDispatchProvider.notifier).triggerDistress(
-                        cameraId: selectedCameraId,
-                        cameraName: selectedCamInfo['name'],
-                      );
-                      ref.read(mockInferenceServiceProvider).triggerTestThreat('Acoustic Distress: HELP, HELP');
-                    },
+                    onTap: () => _confirmAndTriggerDistressDrill(
+                      context,
+                      ref,
+                      cameraId: selectedCameraId,
+                      cameraName: selectedCamInfo['name'] ?? 'Laptop Camera 1',
+                    ),
                   ),
                   const SizedBox(width: 6),
                   _buildDrillChip(

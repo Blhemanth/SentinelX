@@ -70,19 +70,19 @@ class ModelMetadata {
 
   String get formattedInputShape => inputShape.join(' × ');
 
-  factory ModelMetadata.defaultDirectML({String path = 'assets/models/sentinelx_v1.onnx'}) {
+  factory ModelMetadata.defaultDirectML({String path = 'assets/models/sentinelx_model.onnx'}) {
     final ep = PlatformUtils.isWindows
-        ? ExecutionProviderType.directML
+        ? ExecutionProviderType.cpuMultiThreaded
         : (PlatformUtils.isAndroid
             ? ExecutionProviderType.nnapi
             : ExecutionProviderType.cpuMultiThreaded);
 
     return ModelMetadata(
-      modelName: 'SentinelX-UrbanAnomaly-v1.onnx',
+      modelName: 'sentinelx_model.onnx',
       modelPath: path,
-      fileSizeBytes: 42 * 1024 * 1024, // ~42 MB INT8 model
+      fileSizeBytes: 20386197, // ~19.44 MB INT8 quantized multimodal model
       quantization: QuantizationType.int8,
-      inputShape: const [1, 3, 640, 640],
+      inputShape: const [1, 16, 3, 224, 224],
       executionProvider: ep,
       isLoaded: false,
     );
@@ -176,6 +176,50 @@ class ImageToTensorPreprocessor {
     return tensor;
   }
 
+  /// Converts 16 RGB frames into a single continuous [1, 16, 3, 224, 224] Float32 tensor
+  /// standardized with ImageNet mean/std for the SentinelXNet multimodal backbone.
+  static Float32List preprocessTemporal16Frames({
+    required List<Uint8List> frameBuffers,
+    int frameWidth = 224,
+    int frameHeight = 224,
+    List<double> mean = const [0.485, 0.456, 0.406],
+    List<double> std = const [0.229, 0.224, 0.225],
+  }) {
+    const sequenceLength = 16;
+    const channels = 3;
+    final frameElements = channels * frameHeight * frameWidth; // 150,528
+    final totalElements = sequenceLength * frameElements; // 2,408,448
+    final tensor = Float32List(totalElements);
+
+    if (frameBuffers.isEmpty) {
+      return tensor;
+    }
+
+    final channelSize = frameWidth * frameHeight;
+
+    for (int t = 0; t < sequenceLength; t++) {
+      // Use available frame or pad with the earliest available frame if < 16
+      final frameIndex = t < frameBuffers.length ? t : frameBuffers.length - 1;
+      final buffer = frameBuffers[frameIndex];
+      final frameOffset = t * frameElements;
+
+      final rOffset = frameOffset;
+      final gOffset = frameOffset + channelSize;
+      final bOffset = frameOffset + 2 * channelSize;
+
+      for (int i = 0; i < channelSize; i++) {
+        final srcIdx = i * 3;
+        if (srcIdx + 2 < buffer.length) {
+          tensor[rOffset + i] = (buffer[srcIdx] / 255.0 - mean[0]) / std[0];
+          tensor[gOffset + i] = (buffer[srcIdx + 1] / 255.0 - mean[1]) / std[1];
+          tensor[bOffset + i] = (buffer[srcIdx + 2] / 255.0 - mean[2]) / std[2];
+        }
+      }
+    }
+
+    return tensor;
+  }
+
   /// Converts normalized planar Float32 tensor into quantized INT8 tensor
   /// with scale and zero-point for INT8 ONNX models.
   static Int8List quantizeToInt8({
@@ -219,9 +263,9 @@ class OnnxInferenceEngine {
         return false;
       }
 
-      // 2. Configure native Execution Provider (DirectML on Windows, NNAPI on Android)
+      // 2. Configure native Execution Provider (CPU Multi-Threaded on Windows, NNAPI on Android)
       final ep = PlatformUtils.isWindows
-          ? ExecutionProviderType.directML
+          ? ExecutionProviderType.cpuMultiThreaded
           : (PlatformUtils.isAndroid
               ? ExecutionProviderType.nnapi
               : ExecutionProviderType.cpuMultiThreaded);
@@ -232,7 +276,7 @@ class OnnxInferenceEngine {
         modelPath: modelPath,
         fileSizeBytes: _metadata.fileSizeBytes,
         quantization: _metadata.quantization,
-        inputShape: const [1, 3, 640, 640],
+        inputShape: const [1, 16, 3, 224, 224],
         executionProvider: ep,
         isLoaded: true,
         numThreads: Platform.numberOfProcessors.clamp(2, 8),

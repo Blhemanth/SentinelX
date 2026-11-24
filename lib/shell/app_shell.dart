@@ -28,6 +28,7 @@ class _AppShellState extends ConsumerState<AppShell> {
   @override
   void initState() {
     super.initState();
+    ref.read(authServiceProvider).registerSessionResetCallback(_onSessionReset);
     // Start inference engines
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final user = ref.read(currentUserProvider);
@@ -38,7 +39,24 @@ class _AppShellState extends ConsumerState<AppShell> {
       engine.start();
       ref.read(inferenceRunningProvider.notifier).state = true;
       ref.read(mockInferenceServiceProvider).start();
+
+      // Bind continuous real-time ONNX inference scheduler and detection sync
+      final scheduler = ref.read(continuousInferenceSchedulerProvider);
+      ref.read(inferenceRepositoryProvider).bindScheduler(scheduler);
+      ref.read(detectionSyncServiceProvider);
     });
+  }
+
+  void _onSessionReset() {
+    if (mounted) {
+      resetUserSessionState(ref);
+    }
+  }
+
+  @override
+  void dispose() {
+    ref.read(authServiceProvider).unregisterSessionResetCallback(_onSessionReset);
+    super.dispose();
   }
 
   @override
@@ -203,6 +221,7 @@ class _DesktopSidebarState extends ConsumerState<_DesktopSidebar> {
               padding: EdgeInsets.zero,
               constraints: const BoxConstraints(),
               onPressed: () async {
+                resetUserSessionState(ref);
                 await ref.read(authServiceProvider).logout();
                 if (mounted) {
                   Navigator.of(context).pushReplacement(

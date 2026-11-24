@@ -1,0 +1,42 @@
+{
+  "device_index": 0,
+  "device_name": "Microphone Array (Realtek(R) Au",
+  "hardware_opened": true,
+  "initialization_time_ms": 844.04,
+  "sample_rate_hz": 16000,
+  "channels": 1,
+  "bit_depth": 16,
+  "duration_seconds": 4.0,
+  "target_samples": 64000,
+  "total_samples_captured": 64000,
+  "total_bytes_recorded": 128000,
+  "acquisition_duration_ms": 4219.16,
+  "chunk_latencies_ms": [
+    1053.45,
+    1051.43,
+    1062.45,
+    1050.92
+  ],
+  "waveform_metrics": {
+    "min_amplitude": -0.00488,
+    "max_amplitude": 0.00616,
+    "mean_amplitude": -0.0,
+    "rms_volume": 0.00051,
+    "peak_db_level": -65.93
+  },
+  "mel_spectrogram_metrics": {
+    "tensor_shape": [
+      1,
+      1,
+      128,
+      128
+    ],
+    "num_elements": 16384,
+    "min_db": -88.52,
+    "max_db": -8.52,
+    "mean_db": -46.66,
+    "preprocessing_latency_ms": 393.24,
+    "is_finite": true
+  },
+  "timestamp_utc": "2026-11-22T16:43:04Z"
+}

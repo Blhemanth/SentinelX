@@ -79,18 +79,18 @@ class _PoliceDispatchPageState extends ConsumerState<PoliceDispatchPage> {
                     ],
                   ),
                   const Spacer(),
-                  // Broadcast Emergency Trigger for quick testing
+                  // Broadcast Emergency Drill Trigger
                   ElevatedButton.icon(
                     onPressed: () {
-                      ref.read(incidentDispatchProvider.notifier).triggerDistress(
+                      ref.read(incidentDispatchProvider.notifier).triggerDistressDrill(
                             cameraId: 'CAM-001',
                             customTranscript: 'Patrol Distress Alert: "HELP! HELP! OFFICER NEEDS ASSISTANCE"',
                           );
                     },
-                    icon: const Icon(Icons.add_alert, size: 16),
-                    label: const Text('SIMULATE DISTRESS ALERT'),
+                    icon: const Icon(Icons.model_training, size: 16),
+                    label: const Text('TRIGGER DISTRESS DRILL'),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: SentinelColors.threatCritical,
+                      backgroundColor: SentinelColors.threatMedium,
                       foregroundColor: Colors.white,
                     ),
                   ),

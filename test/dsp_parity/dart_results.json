@@ -1,0 +1,50 @@
+{
+  "digital_silence": {
+    "latency_ms": 56.195,
+    "time_frames_generated": 126,
+    "min_db": -100.0,
+    "max_db": -100.0,
+    "mean_db": -100.0,
+    "is_valid": true
+  },
+  "sine_1khz": {
+    "latency_ms": 29.647,
+    "time_frames_generated": 126,
+    "min_db": -38.583457946777344,
+    "max_db": 41.41654035825531,
+    "mean_db": -36.20098888178218,
+    "is_valid": true
+  },
+  "sine_4khz": {
+    "latency_ms": 15.356,
+    "time_frames_generated": 126,
+    "min_db": -38.905418395996094,
+    "max_db": 41.094582817529954,
+    "mean_db": -37.33366632986156,
+    "is_valid": true
+  },
+  "impulse": {
+    "latency_ms": 10.539,
+    "time_frames_generated": 126,
+    "min_db": -69.72190856933594,
+    "max_db": 10.27809452933111,
+    "mean_db": -69.12974932663691,
+    "is_valid": true
+  },
+  "white_noise": {
+    "latency_ms": 11.763,
+    "time_frames_generated": 126,
+    "min_db": -14.73682689666748,
+    "max_db": 29.091595129412354,
+    "mean_db": 19.019667799350092,
+    "is_valid": true
+  },
+  "recorded_mic": {
+    "latency_ms": 10.653,
+    "time_frames_generated": 126,
+    "min_db": -72.01229095458984,
+    "max_db": -22.828949831782445,
+    "mean_db": -35.69247926889904,
+    "is_valid": true
+  }
+}

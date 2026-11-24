@@ -1,298 +1,290 @@
 #!/usr/bin/env python3
 """
-SentinelX - Python ML Inference Microservice
-FastAPI service that loads SentinelXNet and exposes HTTP inference endpoints.
-Consumed by the Node.js backend via mlBridge.service.js.
-
-Run with:
-    pip install fastapi uvicorn torch numpy
-    uvicorn inference_api:app --host 0.0.0.0 --port 8000
+SentinelX - Python ML Inference Microservice (FastAPI)
+Exposes high-throughput REST inference endpoints for multimodal urban anomaly detection.
+Features:
+- Genuine video decoding via OpenCV and audio Mel-spectrogram generation
+- Strict PyTorch checkpoint loading (sentinelx_model.pth)
+- Asynchronous CPU execution offloading to prevent blocking event loop
+- UploadFile multipart and JSON base64 input ingestion
+- Input size validation & temporary resource cleanup
+- Origin-restricted CORS policy
 """
 
 import os
 import sys
 import time
-import json
 import base64
+import asyncio
 import logging
 from pathlib import Path
-from typing import Optional, List
+from typing import Optional, List, Dict, Any
 from contextlib import asynccontextmanager
 
-import numpy as np
-import torch
-import torch.nn.functional as F
+# Add server_ml to path so imports resolve
+BASE_DIR = Path(__file__).resolve().parent
+sys.path.insert(0, str(BASE_DIR))
 
-# Add server_ml to path so we can import model.py
-sys.path.insert(0, str(Path(__file__).parent))
-
-from fastapi import FastAPI, HTTPException, BackgroundTasks
+from fastapi import FastAPI, HTTPException, UploadFile, File, Form, status
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
+
+from infer import load_model, run_inference, THREAT_CLASSES, MODEL_VERSION, DEFAULT_WEIGHTS
 
 # ─── Logging ──────────────────────────────────────────────────────────────────
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
 )
-logger = logging.getLogger("sentinelx.inference")
+logger = logging.getLogger("sentinelx.inference_api")
 
-# ─── Constants ────────────────────────────────────────────────────────────────
-MODEL_DIR = Path(__file__).parent / "models"
-CHECKPOINT_PATH = MODEL_DIR / "sentinelx_checkpoint"
-DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
+# Maximum input payload size constraints (50 MB video clip, 15 MB audio)
+MAX_VIDEO_BYTES = 50 * 1024 * 1024
+MAX_AUDIO_BYTES = 15 * 1024 * 1024
 
-THREAT_CLASSES = ["Explosion", "Gunshot", "Fighting", "Accident", "Normal"]
-MODEL_VERSION = "1.0.0"
-
-# ─── Global Model State ───────────────────────────────────────────────────────
-_model = None
 _model_loaded = False
+_active_device = "cpu"
 
 
-def load_model():
-    """Load SentinelXNet from the PyTorch checkpoint."""
-    global _model, _model_loaded
-
-    try:
-        from model import SentinelXNet, create_model
-
-        logger.info(f"Loading model from: {CHECKPOINT_PATH}")
-        logger.info(f"Using device: {DEVICE}")
-
-        model = create_model(num_classes=5)
-
-        # Try to load checkpoint
-        if CHECKPOINT_PATH.exists():
-            try:
-                # PyTorch's torch.load with weights_only for security
-                checkpoint = torch.load(
-                    str(CHECKPOINT_PATH),
-                    map_location=DEVICE,
-                    weights_only=False,  # Needed for custom checkpoint dicts
-                )
-
-                # Handle both raw state_dict and wrapped checkpoint formats
-                if isinstance(checkpoint, dict):
-                    state_dict = checkpoint.get("model_state_dict", checkpoint.get("state_dict", checkpoint))
-                else:
-                    state_dict = checkpoint
-
-                model.load_state_dict(state_dict, strict=False)
-                logger.info("✓ Model weights loaded from checkpoint")
-            except Exception as e:
-                logger.warning(f"Could not load checkpoint weights: {e}")
-                logger.warning("Running with randomly initialized weights (inference will return mock-like results)")
-        else:
-            logger.warning(f"Checkpoint not found at {CHECKPOINT_PATH}. Using random weights.")
-
-        model.to(DEVICE)
-        model.eval()
-        _model = model
-        _model_loaded = True
-        logger.info(f"✓ SentinelXNet ready on {DEVICE}")
-
-    except ImportError as e:
-        logger.error(f"Could not import model.py: {e}")
-        logger.warning("Using fallback mock inference mode")
-        _model = None
-        _model_loaded = False
-    except Exception as e:
-        logger.error(f"Model load failed: {e}")
-        _model = None
-        _model_loaded = False
+def _ensure_model():
+    """Ensure SentinelXNet model weights are loaded and verified."""
+    global _model_loaded, _active_device
+    if not _model_loaded:
+        try:
+            model = load_model(DEFAULT_WEIGHTS)
+            _active_device = next(model.parameters()).device.type
+            _model_loaded = True
+            logger.info(f"✓ SentinelXNet loaded with strict verification on device: {_active_device}")
+        except Exception as e:
+            logger.error(f"Critical error loading model checkpoint: {e}")
+            _model_loaded = False
+    return _model_loaded
 
 
-# ─── Lifespan (startup/shutdown) ──────────────────────────────────────────────
+# ─── Lifespan (Startup / Shutdown) ────────────────────────────────────────────
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Startup
-    logger.info("SentinelX Inference API starting up...")
-    load_model()
+    logger.info("Initializing SentinelX ML Inference Microservice...")
+    _ensure_model()
     yield
-    # Shutdown
-    logger.info("SentinelX Inference API shutting down...")
+    logger.info("Shutting down SentinelX ML Inference Microservice...")
 
 
-# ─── FastAPI App ──────────────────────────────────────────────────────────────
+# ─── FastAPI Application ──────────────────────────────────────────────────────
 app = FastAPI(
-    title="SentinelX ML Inference API",
-    description="Real-time multi-modal anomaly detection inference microservice",
+    title="SentinelX Multimodal ML Inference Service",
+    description="Real-time spatio-temporal video and acoustic Mel-spectrogram anomaly detection",
     version=MODEL_VERSION,
     lifespan=lifespan,
 )
 
+# Enforce restricted trusted origins
+allowed_origins_env = os.getenv(
+    "ALLOWED_ORIGINS",
+    "http://localhost:3000,http://127.0.0.1:3000,http://localhost:5173,http://127.0.0.1:5173",
+)
+allowed_origins = [origin.strip() for origin in allowed_origins_env.split(",") if origin.strip()]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_methods=["GET", "POST"],
+    allow_origins=allowed_origins,
+    allow_credentials=True,
+    allow_methods=["GET", "POST", "OPTIONS"],
     allow_headers=["*"],
 )
 
 
-# ─── Request / Response Models ────────────────────────────────────────────────
+# ─── Schemas ──────────────────────────────────────────────────────────────────
 class DetectRequest(BaseModel):
-    camera_id: str = Field(..., description="Camera identifier")
+    camera_id: str = Field(default="CAM-001", description="Camera identifier")
     video_frames: Optional[str] = Field(
-        None,
-        description="Base64-encoded video frames tensor (optional; generates synthetic if absent)",
+        default=None,
+        description="Base64-encoded video file or video clip bytes",
     )
     audio_data: Optional[str] = Field(
-        None,
-        description="Base64-encoded Mel-spectrogram (optional; generates synthetic if absent)",
+        default=None,
+        description="Base64-encoded WAV/PCM audio bytes",
+    )
+    video_path: Optional[str] = Field(
+        default=None,
+        description="Local path to video clip",
+    )
+    audio_path: Optional[str] = Field(
+        default=None,
+        description="Local path to audio clip",
     )
 
 
-class BoundingBox(BaseModel):
-    x: float
-    y: float
-    w: float
-    h: float
+class LatencyMetrics(BaseModel):
+    video_preprocess_ms: float
+    audio_preprocess_ms: float
+    model_inference_ms: float
+    total_latency_ms: float
 
 
 class DetectResponse(BaseModel):
+    camera_id: str
     threat_class: str
     confidence: float
+    raw_logits: List[float]
     bbox: List[float]
-    class_probabilities: dict
-    inference_latency_ms: float
-    model_version: str
+    class_probabilities: Dict[str, float]
+    detection_status: str
+    audio_present: bool
+    metrics: LatencyMetrics
     device: str
     model_loaded: bool
+    model_version: str
 
 
-# ─── Inference Helper ─────────────────────────────────────────────────────────
-def run_inference(video_tensor: torch.Tensor, audio_tensor: torch.Tensor):
-    """
-    Run SentinelXNet forward pass. Returns (logits, bbox).
-    Falls back to synthetic output if model is not loaded.
-    """
-    if _model is None or not _model_loaded:
-        # Fallback: return synthetic detection
-        logger.warning("Model not loaded — returning synthetic inference result")
-        num_classes = 5
-        logits = torch.randn(1, num_classes)
-        bbox = torch.sigmoid(torch.randn(1, 4))
-        return logits, bbox
-
-    with torch.no_grad():
-        logits, bbox = _model(video_tensor, audio_tensor)
-
-    return logits, bbox
-
-
-def decode_base64_tensor(b64_str: str, shape: tuple, dtype=np.float32) -> torch.Tensor:
-    """Decode a base64-encoded flat numpy array back to a tensor."""
-    raw = base64.b64decode(b64_str)
-    arr = np.frombuffer(raw, dtype=dtype).reshape(shape)
-    return torch.from_numpy(arr.copy())
-
-
-# ─── API Endpoints ─────────────────────────────────────────────────────────────
+# ─── Endpoints ────────────────────────────────────────────────────────────────
 @app.get("/health")
 def health():
+    _ensure_model()
     return {
         "status": "online",
         "model_loaded": _model_loaded,
-        "device": DEVICE,
+        "device": _active_device,
         "model_version": MODEL_VERSION,
-        "checkpoint_path": str(CHECKPOINT_PATH),
-        "checkpoint_exists": CHECKPOINT_PATH.exists(),
+        "weights_path": str(DEFAULT_WEIGHTS),
+        "weights_exist": DEFAULT_WEIGHTS.exists(),
     }
-
-
-@app.post("/detect", response_model=DetectResponse)
-def detect(payload: DetectRequest):
-    t0 = time.time()
-
-    # ── Prepare video tensor [1, 16, 3, 224, 224] ─────────────────────────────
-    if payload.video_frames:
-        try:
-            video = decode_base64_tensor(
-                payload.video_frames,
-                shape=(1, 16, 3, 224, 224),
-            ).to(DEVICE)
-        except Exception as e:
-            logger.warning(f"Failed to decode video_frames: {e}. Using random.")
-            video = torch.randn(1, 16, 3, 224, 224, device=DEVICE)
-    else:
-        # Synthetic: realistic random input for testing without real video
-        video = torch.randn(1, 16, 3, 224, 224, device=DEVICE)
-
-    # ── Prepare audio tensor [1, 1, 128, 128] ─────────────────────────────────
-    if payload.audio_data:
-        try:
-            audio = decode_base64_tensor(
-                payload.audio_data,
-                shape=(1, 1, 128, 128),
-            ).to(DEVICE)
-        except Exception as e:
-            logger.warning(f"Failed to decode audio_data: {e}. Using random.")
-            audio = torch.randn(1, 1, 128, 128, device=DEVICE)
-    else:
-        audio = torch.randn(1, 1, 128, 128, device=DEVICE)
-
-    # ── Run inference ─────────────────────────────────────────────────────────
-    try:
-        logits, bbox = run_inference(video, audio)
-    except Exception as e:
-        logger.error(f"Inference error: {e}")
-        raise HTTPException(status_code=500, detail=f"Inference failed: {str(e)}")
-
-    # ── Decode outputs ────────────────────────────────────────────────────────
-    probs = F.softmax(logits[0], dim=-1).cpu().numpy()
-    pred_idx = int(np.argmax(probs))
-    pred_class = THREAT_CLASSES[pred_idx]
-    confidence = float(probs[pred_idx])
-    bbox_coords = bbox[0].cpu().numpy().tolist()
-
-    class_probs = {cls: float(p) for cls, p in zip(THREAT_CLASSES, probs)}
-
-    latency_ms = (time.time() - t0) * 1000
-
-    logger.info(
-        f"[{payload.camera_id}] {pred_class} ({confidence:.2%}) | "
-        f"bbox={[f'{v:.3f}' for v in bbox_coords]} | {latency_ms:.1f}ms"
-    )
-
-    return DetectResponse(
-        threat_class=pred_class,
-        confidence=confidence,
-        bbox=bbox_coords,
-        class_probabilities=class_probs,
-        inference_latency_ms=round(latency_ms, 2),
-        model_version=MODEL_VERSION,
-        device=DEVICE,
-        model_loaded=_model_loaded,
-    )
 
 
 @app.get("/model/info")
 def model_info():
-    """Return model architecture metadata."""
-    if _model is None:
-        return {"loaded": False, "error": "Model not loaded"}
-
-    total_params = sum(p.numel() for p in _model.parameters())
-    trainable_params = sum(p.numel() for p in _model.parameters() if p.requires_grad)
-
+    _ensure_model()
     return {
-        "loaded": True,
-        "device": DEVICE,
+        "model_name": "SentinelXNet",
         "model_version": MODEL_VERSION,
-        "total_parameters": total_params,
-        "trainable_parameters": trainable_params,
-        "num_classes": 5,
+        "model_loaded": _model_loaded,
+        "device": _active_device,
+        "num_classes": len(THREAT_CLASSES),
         "threat_classes": THREAT_CLASSES,
-        "input_shapes": {
-            "video": "[B, 16, 3, 224, 224]",
-            "audio": "[B, 1, 128, 128]",
+        "input_contracts": {
+            "video": "[1, 16, 3, 224, 224] (ImageNet normalized)",
+            "audio": "[1, 1, 128, 128] (16kHz 128-band Mel-spectrogram in dB)",
         },
-        "output_shapes": {
-            "logits": "[B, 5]",
-            "bbox": "[B, 4] (normalized [x,y,w,h] in [0,1])",
+        "output_contracts": {
+            "threat_classification": "[1, 5] logits",
+            "spatial_bounding_box": "[1, 4] normalized [x, y, w, h] in [0, 1]",
         },
     }
+
+
+@app.post("/detect", response_model=DetectResponse)
+async def detect(payload: DetectRequest):
+    if not _ensure_model():
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Model weights not loaded or failed strict checkpoint verification.",
+        )
+
+    # 1. Resolve video source
+    video_bytes: Optional[bytes] = None
+    if payload.video_frames:
+        try:
+            video_bytes = base64.b64decode(payload.video_frames)
+        except Exception as e:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Invalid base64 video_frames: {e}")
+    elif payload.video_path:
+        if not os.path.exists(payload.video_path):
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"video_path not found: {payload.video_path}")
+        video_bytes = payload.video_path
+    else:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Missing required video input. Provide video_frames (base64) or video_path.",
+        )
+
+    if isinstance(video_bytes, (bytes, bytearray)) and len(video_bytes) > MAX_VIDEO_BYTES:
+        raise HTTPException(
+            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            detail=f"Video payload exceeds maximum permitted size of {MAX_VIDEO_BYTES / (1024*1024):.0f} MB.",
+        )
+
+    # 2. Resolve audio source
+    audio_bytes: Optional[Any] = None
+    if payload.audio_data:
+        try:
+            audio_bytes = base64.b64decode(payload.audio_data)
+        except Exception as e:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Invalid base64 audio_data: {e}")
+    elif payload.audio_path:
+        if not os.path.exists(payload.audio_path):
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"audio_path not found: {payload.audio_path}")
+        audio_bytes = payload.audio_path
+
+    if isinstance(audio_bytes, (bytes, bytearray)) and len(audio_bytes) > MAX_AUDIO_BYTES:
+        raise HTTPException(
+            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            detail=f"Audio payload exceeds maximum permitted size of {MAX_AUDIO_BYTES / (1024*1024):.0f} MB.",
+        )
+
+    # 3. Execute inference in thread pool to prevent blocking event loop
+    try:
+        result = await asyncio.to_thread(
+            run_inference,
+            video_source=video_bytes,
+            audio_source=audio_bytes,
+            camera_id=payload.camera_id,
+            weights_path=DEFAULT_WEIGHTS,
+        )
+        return result
+    except ValueError as val_err:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(val_err))
+    except Exception as inf_err:
+        logger.error(f"Inference execution failure: {inf_err}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Inference failed: {str(inf_err)}",
+        )
+
+
+@app.post("/detect/upload", response_model=DetectResponse)
+async def detect_upload(
+    video_file: UploadFile = File(..., description="Video clip file (MP4, AVI, WebM)"),
+    audio_file: Optional[UploadFile] = File(None, description="Audio file (WAV, PCM)"),
+    camera_id: str = Form("CAM-001"),
+):
+    """Multipart form endpoint supporting direct file uploads from cameras and dashboard clients."""
+    if not _ensure_model():
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Model weights not loaded.",
+        )
+
+    # Read and validate video file
+    video_content = await video_file.read()
+    if len(video_content) == 0:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Uploaded video file is empty.")
+    if len(video_content) > MAX_VIDEO_BYTES:
+        raise HTTPException(status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE, detail="Video file exceeds 50 MB limit.")
+
+    # Read audio file if provided
+    audio_content = None
+    if audio_file is not None:
+        audio_content = await audio_file.read()
+        if len(audio_content) > MAX_AUDIO_BYTES:
+            raise HTTPException(status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE, detail="Audio file exceeds 15 MB limit.")
+
+    try:
+        result = await asyncio.to_thread(
+            run_inference,
+            video_source=video_content,
+            audio_source=audio_content,
+            camera_id=camera_id,
+            weights_path=DEFAULT_WEIGHTS,
+        )
+        return result
+    except ValueError as val_err:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(val_err))
+    except Exception as inf_err:
+        logger.error(f"Upload inference execution failure: {inf_err}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Inference failed: {str(inf_err)}",
+        )
 
 
 if __name__ == "__main__":

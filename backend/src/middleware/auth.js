@@ -69,9 +69,28 @@ const authenticate = async (req, res, next) => {
 
     next();
   } catch (err) {
-    console.error('[Auth Middleware] Unexpected error:', err);
+    console.error('[Auth Middleware] Unexpected error:', err.message);
     res.status(500).json({ success: false, error: 'Internal server error.' });
   }
 };
 
-module.exports = { authenticate };
+/**
+ * Permissive authentication for logout / cleanup routes.
+ * If a valid Bearer token is present, sets req.user.
+ * If expired or missing, allows execution to proceed cleanly so session revocation succeeds.
+ */
+const permissiveAuthenticate = (req, res, next) => {
+  const authHeader = req.headers.authorization;
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    const token = authHeader.split(' ')[1];
+    try {
+      const decoded = verifyAccessToken(token);
+      req.user = decoded;
+    } catch (_) {
+      // Permissive: token expired or invalid; proceed so logout clears session/cookies
+    }
+  }
+  next();
+};
+
+module.exports = { authenticate, permissiveAuthenticate };

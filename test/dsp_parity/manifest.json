@@ -1,0 +1,16 @@
+{
+  "sample_rate": 16000,
+  "num_samples": 64000,
+  "n_fft": 1024,
+  "hop_length": 512,
+  "n_mels": 128,
+  "target_time_steps": 128,
+  "test_cases": [
+    "digital_silence",
+    "sine_1khz",
+    "sine_4khz",
+    "impulse",
+    "white_noise",
+    "recorded_mic"
+  ]
+}

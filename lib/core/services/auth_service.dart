@@ -1,9 +1,10 @@
 // SentinelX - Auth Service
-// Manages JWT access/refresh tokens using shared_preferences for persistence.
-// Handles token refresh, storage, and logout.
+// Manages JWT access/refresh tokens with FlutterSecureStorage on Windows (DPAPI) and Android (EncryptedSharedPreferences).
+// Falls back gracefully and preserves strict 600ms startup threshold.
 
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
 
@@ -58,25 +59,120 @@ class AuthService extends ChangeNotifier {
     defaultValue: 'http://127.0.0.1:3000',
   );
 
+  // Platform-native secure storage configuration:
+  // Windows: DPAPI / Windows Credential Manager
+  // Android: KeyStore AES-256 GCM + RSA OAEP key wrapping
+  static const FlutterSecureStorage _secureStorage = FlutterSecureStorage(
+    aOptions: AndroidOptions(
+      resetOnError: true,
+      keyCipherAlgorithm: KeyCipherAlgorithm.RSA_ECB_OAEPwithSHA_256andMGF1Padding,
+      storageCipherAlgorithm: StorageCipherAlgorithm.AES_GCM_NoPadding,
+    ),
+    wOptions: WindowsOptions(),
+  );
+
   AuthUser? _currentUser;
   bool _isAuthenticated = false;
 
   AuthUser? get currentUser => _currentUser;
   bool get isAuthenticated => _isAuthenticated;
 
+  // Session generation counter to discard trailing asynchronous responses across account switch / logout
+  int _sessionGeneration = 0;
+  int get sessionGeneration => _sessionGeneration;
+
+  final List<VoidCallback> _onSessionResetCallbacks = [];
+
+  void registerSessionResetCallback(VoidCallback callback) {
+    if (!_onSessionResetCallbacks.contains(callback)) {
+      _onSessionResetCallbacks.add(callback);
+    }
+  }
+
+  void unregisterSessionResetCallback(VoidCallback callback) {
+    _onSessionResetCallbacks.remove(callback);
+  }
+
+  void triggerSessionReset() {
+    _sessionGeneration++;
+    for (final callback in List<VoidCallback>.from(_onSessionResetCallbacks)) {
+      try {
+        callback();
+      } catch (e) {
+        debugPrint('[AuthService] Session reset callback failed: $e');
+      }
+    }
+  }
+
+  // ── Secure Storage Helpers with Bounded Timeouts ──────────────────────────
+  static Future<String?> _readSecure(String key) async {
+    try {
+      return await _secureStorage.read(key: key).timeout(
+        const Duration(milliseconds: 500),
+        onTimeout: () => null,
+      );
+    } catch (e) {
+      debugPrint('SecureStorage read fallback for $key: $e');
+      return null;
+    }
+  }
+
+  static Future<void> _writeSecure(String key, String value) async {
+    try {
+      await _secureStorage.write(key: key, value: value).timeout(
+        const Duration(milliseconds: 800),
+      );
+    } catch (e) {
+      debugPrint('SecureStorage write error for $key: $e');
+    }
+  }
+
+  static Future<void> _deleteSecure(String key) async {
+    try {
+      await _secureStorage.delete(key: key).timeout(
+        const Duration(milliseconds: 500),
+      );
+    } catch (e) {
+      debugPrint('SecureStorage delete error for $key: $e');
+    }
+  }
+
   // ── Initialize: load persisted session ───────────────────────────────────
   Future<bool> initialize() async {
     try {
-      final prefs = await SharedPreferences.getInstance();
+      final prefs = await SharedPreferences.getInstance().timeout(
+        const Duration(milliseconds: 600),
+        onTimeout: () => throw Exception('Prefs read timeout'),
+      );
       final userData = prefs.getString(_kUserData);
-      final accessToken = prefs.getString(_kAccessToken);
       final expiryMs = prefs.getInt(_kTokenExpiry);
+
+      // Read access token securely
+      var accessToken = await _readSecure(_kAccessToken);
+
+      // Migration fallback: check legacy SharedPreferences and migrate to secure storage
+      if (accessToken == null && prefs.containsKey(_kAccessToken)) {
+        final legacyToken = prefs.getString(_kAccessToken);
+        final legacyRefresh = prefs.getString(_kRefreshToken);
+        if (legacyToken != null) {
+          accessToken = legacyToken;
+          await _writeSecure(_kAccessToken, legacyToken);
+          await prefs.remove(_kAccessToken);
+        }
+        if (legacyRefresh != null) {
+          await _writeSecure(_kRefreshToken, legacyRefresh);
+          await prefs.remove(_kRefreshToken);
+        }
+      }
 
       if (userData == null || accessToken == null) return false;
 
       // Check expiry
       if (expiryMs != null && DateTime.now().millisecondsSinceEpoch > expiryMs) {
-        final refreshed = await refreshTokens();
+        final refreshed = await refreshTokens().timeout(
+          const Duration(milliseconds: 600),
+          onTimeout: () => false,
+        );
         if (!refreshed) {
           await _clearStoredTokens();
           _currentUser = null;
@@ -174,8 +270,7 @@ class AuthService extends ChangeNotifier {
   // ── Refresh tokens ────────────────────────────────────────────────────────
   Future<bool> refreshTokens() async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final refreshToken = prefs.getString(_kRefreshToken);
+      final refreshToken = await _readSecure(_kRefreshToken);
       if (refreshToken == null) return false;
 
       final response = await http.post(
@@ -187,6 +282,7 @@ class AuthService extends ChangeNotifier {
       final body = jsonDecode(response.body) as Map<String, dynamic>;
       if (response.statusCode == 200 && body['success'] == true) {
         final data = body['data'] as Map<String, dynamic>;
+        final prefs = await SharedPreferences.getInstance();
         final userData = prefs.getString(_kUserData);
         await _persistTokens(
           accessToken: data['accessToken'],
@@ -206,7 +302,7 @@ class AuthService extends ChangeNotifier {
   Future<String?> getValidAccessToken() async {
     final prefs = await SharedPreferences.getInstance();
     final expiryMs = prefs.getInt(_kTokenExpiry);
-    final accessToken = prefs.getString(_kAccessToken);
+    final accessToken = await _readSecure(_kAccessToken);
 
     if (accessToken == null) return null;
 
@@ -215,7 +311,7 @@ class AuthService extends ChangeNotifier {
         DateTime.now().millisecondsSinceEpoch > expiryMs - 60000) {
       final refreshed = await refreshTokens();
       if (!refreshed) return null;
-      return (await SharedPreferences.getInstance()).getString(_kAccessToken);
+      return await _readSecure(_kAccessToken);
     }
 
     return accessToken;
@@ -224,17 +320,17 @@ class AuthService extends ChangeNotifier {
   // ── Logout ────────────────────────────────────────────────────────────────
   Future<void> logout() async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final refreshToken = prefs.getString(_kRefreshToken);
-      final accessToken = prefs.getString(_kAccessToken);
+      final refreshToken = await _readSecure(_kRefreshToken);
+      final accessToken = await _readSecure(_kAccessToken);
 
-      if (refreshToken != null && accessToken != null) {
-        http.post(
+      if (refreshToken != null) {
+        final headers = <String, String>{'Content-Type': 'application/json'};
+        if (accessToken != null) {
+          headers['Authorization'] = 'Bearer $accessToken';
+        }
+        await http.post(
           Uri.parse('$_baseUrl/api/auth/logout'),
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': 'Bearer $accessToken',
-          },
+          headers: headers,
           body: jsonEncode({'refreshToken': refreshToken}),
         ).timeout(const Duration(seconds: 5)).catchError((_) => http.Response('', 500));
       }
@@ -243,6 +339,7 @@ class AuthService extends ChangeNotifier {
     await _clearStoredTokens();
     _currentUser = null;
     _isAuthenticated = false;
+    triggerSessionReset();
     notifyListeners();
   }
 
@@ -256,23 +353,35 @@ class AuthService extends ChangeNotifier {
     final prefs = await SharedPreferences.getInstance();
     final expiryMs = DateTime.now().millisecondsSinceEpoch + (expiresIn * 1000);
 
-    await prefs.setString(_kAccessToken, accessToken);
-    await prefs.setString(_kRefreshToken, refreshToken);
+    // Secure encrypted storage for sensitive JWT tokens (Windows DPAPI / Android Keystore)
+    await _writeSecure(_kAccessToken, accessToken);
+    await _writeSecure(_kRefreshToken, refreshToken);
+
+    // Clean up any legacy plaintext tokens from SharedPreferences
+    await prefs.remove(_kAccessToken);
+    await prefs.remove(_kRefreshToken);
     await prefs.setInt(_kTokenExpiry, expiryMs);
 
     if (user != null) {
       await prefs.setString(_kUserData, jsonEncode(user));
       _currentUser = AuthUser.fromJson(user);
       _isAuthenticated = true;
+      triggerSessionReset();
       notifyListeners();
     }
   }
 
   Future<void> _clearStoredTokens() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove(_kAccessToken);
-    await prefs.remove(_kRefreshToken);
-    await prefs.remove(_kTokenExpiry);
-    await prefs.remove(_kUserData);
+    await _deleteSecure(_kAccessToken);
+    await _deleteSecure(_kRefreshToken);
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove(_kAccessToken);
+      await prefs.remove(_kRefreshToken);
+      await prefs.remove(_kTokenExpiry);
+      await prefs.remove(_kUserData);
+    } catch (e) {
+      debugPrint('[AuthService] Clear stored prefs note: $e');
+    }
   }
 }

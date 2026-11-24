@@ -1,9 +1,13 @@
 /**
  * SentinelX - Auth Controller
  * Handles: register, login, refreshToken, logout, getMe
+ * Hardened for Phase 2:
+ * - Admin provisioning supports 'police' role alongside 'admin'/'analyst'/'user'
+ * - Public registration strictly defaults to 'user'
+ * - HttpOnly, Secure, SameSite refresh token cookie support for web clients
+ * - Resilient session rotation handling and duplicate key protection
  */
 
-const { v4: uuidv4 } = require('uuid');
 const User = require('../models/User');
 const Session = require('../models/Session');
 const {
@@ -21,14 +25,25 @@ const parseExpiresToMs = (expiresStr) => {
   return value * (map[unit] || 1000);
 };
 
+// ─── Helper: standard refresh token cookie options ────────────────────────────
+const getRefreshTokenCookieOptions = () => ({
+  httpOnly: true,
+  secure: process.env.NODE_ENV === 'production',
+  sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax',
+  maxAge: parseExpiresToMs(REFRESH_EXPIRES),
+  path: '/api/auth',
+});
+
 // ─── POST /api/auth/register ─────────────────────────────────────────────────
 const register = async (req, res) => {
   try {
     const { name, email, password, role } = req.body;
 
-    // Only admins can create non-user roles (enforced at route level too)
+    // Only authenticated admins can create privileged roles (admin, police, analyst, user)
+    // Public registration strictly defaults to 'user'
+    const allowedRoles = ['admin', 'police', 'analyst', 'user'];
     const assignedRole =
-      req.user?.role === 'admin' && ['analyst', 'admin'].includes(role)
+      req.user?.role === 'admin' && allowedRoles.includes(role)
         ? role
         : 'user';
 
@@ -53,7 +68,7 @@ const register = async (req, res) => {
     if (err.name === 'ValidationError') {
       return res.status(400).json({ success: false, error: err.message });
     }
-    console.error('[Auth] register error:', err);
+    console.error('[Auth] register error:', err.message);
     res.status(500).json({ success: false, error: 'Internal server error.' });
   }
 };
@@ -92,22 +107,36 @@ const login = async (req, res) => {
     user.lastLogin = new Date();
     await user.save({ validateBeforeSave: false });
 
+    // Set HttpOnly cookie for web security
+    res.cookie('refreshToken', refreshToken, getRefreshTokenCookieOptions());
+
+    // Separate browser token from native client storage:
+    // If request originates from a browser (Origin header present), do not expose
+    // the refresh token in response JSON to prevent JavaScript access / XSS theft.
+    // Flutter / native clients (without browser Origin) receive it for secure key-store persistence.
+    const isBrowserClient = Boolean(req.get('origin') || req.headers['x-client-platform'] === 'web');
+
+    const responseData = {
+      accessToken,
+      expiresIn: 900, // 15 minutes in seconds
+      user: {
+        userId: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+      },
+    };
+
+    if (!isBrowserClient) {
+      responseData.refreshToken = refreshToken;
+    }
+
     res.status(200).json({
       success: true,
-      data: {
-        accessToken,
-        refreshToken,
-        expiresIn: 900, // 15 minutes in seconds
-        user: {
-          userId: user._id,
-          name: user.name,
-          email: user.email,
-          role: user.role,
-        },
-      },
+      data: responseData,
     });
   } catch (err) {
-    console.error('[Auth] login error:', err);
+    console.error('[Auth] login error:', err.message);
     res.status(500).json({ success: false, error: 'Internal server error.' });
   }
 };
@@ -115,7 +144,8 @@ const login = async (req, res) => {
 // ─── POST /api/auth/refresh ───────────────────────────────────────────────────
 const refreshToken = async (req, res) => {
   try {
-    const { refreshToken: token } = req.body;
+    // Support both HttpOnly cookie (web) and request body (Flutter / API client)
+    const token = req.cookies?.refreshToken || req.body?.refreshToken;
     if (!token) {
       return res.status(400).json({ success: false, error: 'Refresh token required.' });
     }
@@ -128,8 +158,12 @@ const refreshToken = async (req, res) => {
       return res.status(401).json({ success: false, error: 'Invalid or expired refresh token.' });
     }
 
-    // Check session in DB
-    const session = await Session.findOne({ refreshToken: token, isRevoked: false });
+    // Atomically find and revoke the session to guarantee deterministic single-use rotation (prevent TOCTOU race condition)
+    const session = await Session.findOneAndUpdate(
+      { refreshToken: token, isRevoked: false },
+      { isRevoked: true },
+      { new: false }
+    );
     if (!session) {
       return res.status(401).json({ success: false, error: 'Session not found or revoked.' });
     }
@@ -140,32 +174,48 @@ const refreshToken = async (req, res) => {
       return res.status(401).json({ success: false, error: 'User not found or deactivated.' });
     }
 
-    // Rotate tokens (revoke old, issue new)
-    session.isRevoked = true;
-    await session.save();
-
     const tokenPayload = { userId: user._id.toString(), email: user.email, role: user.role };
     const newAccessToken = generateAccessToken(tokenPayload);
     const newRefreshToken = generateRefreshToken({ userId: user._id.toString() });
 
-    await Session.create({
-      userId: user._id,
-      refreshToken: newRefreshToken,
-      userAgent: req.headers['user-agent'] || 'unknown',
-      ipAddress: req.ip,
-      expiresAt: new Date(Date.now() + parseExpiresToMs(REFRESH_EXPIRES)),
-    });
+    try {
+      await Session.create({
+        userId: user._id,
+        refreshToken: newRefreshToken,
+        userAgent: req.headers['user-agent'] || 'unknown',
+        ipAddress: req.ip,
+        expiresAt: new Date(Date.now() + parseExpiresToMs(REFRESH_EXPIRES)),
+      });
+    } catch (createErr) {
+      if (createErr.code === 11000) {
+        return res.status(409).json({
+          success: false,
+          error: 'Concurrent token refresh collision detected. Please retry.',
+        });
+      }
+      throw createErr;
+    }
+
+    // Set updated cookie
+    res.cookie('refreshToken', newRefreshToken, getRefreshTokenCookieOptions());
+
+    const isBrowserClient = Boolean(req.get('origin') || req.headers['x-client-platform'] === 'web');
+
+    const responseData = {
+      accessToken: newAccessToken,
+      expiresIn: 900,
+    };
+
+    if (!isBrowserClient) {
+      responseData.refreshToken = newRefreshToken;
+    }
 
     res.status(200).json({
       success: true,
-      data: {
-        accessToken: newAccessToken,
-        refreshToken: newRefreshToken,
-        expiresIn: 900,
-      },
+      data: responseData,
     });
   } catch (err) {
-    console.error('[Auth] refresh error:', err);
+    console.error('[Auth] refresh error:', err.message);
     res.status(500).json({ success: false, error: 'Internal server error.' });
   }
 };
@@ -173,13 +223,15 @@ const refreshToken = async (req, res) => {
 // ─── POST /api/auth/logout ────────────────────────────────────────────────────
 const logout = async (req, res) => {
   try {
-    const { refreshToken: token } = req.body;
+    const token = req.cookies?.refreshToken || req.body?.refreshToken;
     if (token) {
       await Session.updateOne({ refreshToken: token }, { isRevoked: true });
     }
+    // Always clear the refresh token cookie
+    res.clearCookie('refreshToken', { path: '/api/auth' });
     res.status(200).json({ success: true, message: 'Logged out successfully.' });
   } catch (err) {
-    console.error('[Auth] logout error:', err);
+    console.error('[Auth] logout error:', err.message);
     res.status(500).json({ success: false, error: 'Internal server error.' });
   }
 };
@@ -203,7 +255,7 @@ const getMe = async (req, res) => {
       },
     });
   } catch (err) {
-    console.error('[Auth] getMe error:', err);
+    console.error('[Auth] getMe error:', err.message);
     res.status(500).json({ success: false, error: 'Internal server error.' });
   }
 };

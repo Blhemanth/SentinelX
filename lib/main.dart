@@ -52,8 +52,8 @@ class _AuthGateState extends ConsumerState<_AuthGate> {
   @override
   void initState() {
     super.initState();
-    // Safety guard: never leave the user waiting on splash for more than 1.5 seconds
-    _splashSafetyTimer = Timer(const Duration(milliseconds: 1500), () {
+    // Safety guard: never leave the user waiting on splash for more than 600ms
+    _splashSafetyTimer = Timer(const Duration(milliseconds: 600), () {
       if (mounted && !_timedOut) {
         setState(() => _timedOut = true);
       }
@@ -147,6 +147,17 @@ class _SentinelSplash extends StatelessWidget {
                   child: CircularProgressIndicator(
                     strokeWidth: 2,
                     color: SentinelColors.primary,
+                  ),
+                ),
+                const SizedBox(height: 24),
+                TextButton.icon(
+                  onPressed: onSkip,
+                  icon: const Icon(Icons.arrow_forward, size: 14, color: SentinelColors.textSecondary),
+                  label: Text(
+                    'Continue to Login',
+                    style: SentinelTypography.labelSmall.copyWith(
+                      color: SentinelColors.textSecondary,
+                    ),
                   ),
                 ),
               ],

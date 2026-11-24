@@ -4,17 +4,22 @@
 
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io' show Platform;
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:http/http.dart' as http;
 import 'auth_service.dart';
 
 // ─── API Configuration ─────────────────────────────────────────────────────
 
 class ApiConfig {
-  // Change to your backend URL for production
-  static const String baseUrl = String.fromEnvironment(
-    'API_BASE_URL',
-    defaultValue: 'http://10.0.2.2:3000', // Android emulator → host localhost
-  );
+  static String get baseUrl {
+    const envUrl = String.fromEnvironment('API_BASE_URL');
+    if (envUrl.isNotEmpty) return envUrl;
+    if (!kIsWeb && Platform.isAndroid) {
+      return 'http://10.0.2.2:3000';
+    }
+    return 'http://127.0.0.1:3000';
+  }
 
   static const Duration timeout = Duration(seconds: 15);
   static const Duration detectTimeout = Duration(seconds: 30);

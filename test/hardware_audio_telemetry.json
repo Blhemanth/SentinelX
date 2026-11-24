@@ -1,0 +1,149 @@
+{
+  "platform": "Windows Desktop x64",
+  "runner": "test/flutter_hardware_audio_runner.dart",
+  "start_time_utc": "2026-11-23T16:39:31.726983Z",
+  "scenarios": {
+    "scenario_1_digital_silence": {
+      "status": "PASSED",
+      "rms": 0.0,
+      "dbfs": -100.0,
+      "is_digital_silence": true,
+      "acoustic_state_label": "DIGITAL SILENCE (-80 dBFS baseline)",
+      "max_spectral_power": 0.0
+    },
+    "scenario_2_device_discovery": {
+      "status": "PASSED",
+      "has_permission": true,
+      "device_count": 2,
+      "devices": [
+        {
+          "id": "{0.0.1.00000000}.{3bfcb8cf-ffc6-48d5-a55c-01933d5b3525}",
+          "label": "Microphone Array (Realtek(R) Audio)"
+        },
+        {
+          "id": "{0.0.1.00000000}.{5fa73ba7-d464-4179-9a92-6efa0746739b}",
+          "label": "Stereo Mix (Realtek(R) Audio)"
+        }
+      ],
+      "selected_device_id": "{0.0.1.00000000}.{3bfcb8cf-ffc6-48d5-a55c-01933d5b3525}",
+      "selected_device_label": "Microphone Array (Realtek(R) Audio)"
+    },
+    "scenario_3_physical_ambient_capture": {
+      "status": "PASSED",
+      "device_name": "Microphone Array (Realtek(R) Audio)",
+      "total_samples_ingested": 60609,
+      "acquisition_duration_ms": 4570,
+      "rms_volume": 0.0002494753682332504,
+      "dbfs_level": -72.05944655339407,
+      "acoustic_state": "AMBIENT ROOM NOISE",
+      "checkpoints": [
+        {
+          "elapsed_ms": 1793,
+          "samples": 16449,
+          "rms": 0.0025997313836955646,
+          "dbfs": -51.70143046062526,
+          "acoustic_state": "AMBIENT ROOM NOISE"
+        },
+        {
+          "elapsed_ms": 2821,
+          "samples": 32929,
+          "rms": 0.007785042329467671,
+          "dbfs": -42.17478043416062,
+          "acoustic_state": "AMBIENT ROOM NOISE"
+        },
+        {
+          "elapsed_ms": 3851,
+          "samples": 49409,
+          "rms": 0.0012617344035957972,
+          "dbfs": -57.98064109822824,
+          "acoustic_state": "AMBIENT ROOM NOISE"
+        }
+      ]
+    },
+    "scenario_4_speech_calibration": {
+      "status": "PASSED",
+      "rms": 0.03240370358299751,
+      "dbfs": -29.788106984919054,
+      "is_speech_normal": true,
+      "acoustic_state": "CONVERSATIONAL SPEECH"
+    },
+    "scenario_5_acoustic_spike": {
+      "status": "PASSED",
+      "rms": 0.3181980561132484,
+      "dbfs": -9.946049556131193,
+      "is_acoustic_peak": true,
+      "acoustic_state": "ACOUSTIC SPIKE / PEAK"
+    },
+    "scenario_6_fft_20_bands": {
+      "status": "PASSED",
+      "band_count": 20,
+      "active_bands": 11,
+      "bands": [
+        0.07287016046836943,
+        0.08067051376459897,
+        0.09536093768069395,
+        0.12179180350560995,
+        0.16210779043619877,
+        0.22646362598531242,
+        0.33879364677117474,
+        0.6388012051733983,
+        1.0,
+        0.47805717314424073,
+        0.15252940143016716,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    "scenario_7_stream_restart_lifecycle": {
+      "status": "PASSED",
+      "status_after_stop": "connected",
+      "restart_success": true,
+      "post_restart_accumulation": false
+    },
+    "scenario_8_remount_safety": {
+      "status": "PASSED",
+      "remount_initialized": true,
+      "remount_streaming": true
+    },
+    "scenario_9_dsp_preprocessing": {
+      "status": "PASSED",
+      "latency_ms": 16.091,
+      "is_valid": true,
+      "time_frames_generated": 126,
+      "tensor_length": 16384,
+      "min_db": -38.18265151977539,
+      "max_db": 41.81735006332197,
+      "dynamic_range_db": 80.00000158309736
+    },
+    "scenario_10_onnx_inference": {
+      "status": "PASSED",
+      "total_latency_ms": 1097,
+      "native_latency_ms": 1076,
+      "transfer_latency_ms": 5,
+      "predicted_class": "Fighting",
+      "confidence": 0.2819773256778717,
+      "threat_probabilities": [
+        0.1829434037208557,
+        0.1927884966135025,
+        0.2819773256778717,
+        0.20299996435642242,
+        0.13929083943367004
+      ],
+      "bounding_box": [
+        0.4128129482269287,
+        0.4851926863193512,
+        0.5592305660247803,
+        0.5096196532249451
+      ]
+    }
+  },
+  "status": "ALL_10_SCENARIOS_VERIFIED_SUCCESS",
+  "end_time_utc": "2026-11-23T16:39:39.611155Z"
+}

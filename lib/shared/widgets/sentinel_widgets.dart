@@ -270,16 +270,60 @@ class SectionHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: SentinelSpacing.sm),
-      child: Row(
-        children: [
-          if (icon != null) ...[
-            Icon(icon, size: 18, color: SentinelColors.accent),
-            const SizedBox(width: SentinelSpacing.sm),
-          ],
-          Text(title, style: SentinelTypography.headlineMedium),
-          const Spacer(),
-          ?trailing,
-        ],
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final isBounded = constraints.hasBoundedWidth;
+
+          if (!isBounded) {
+            // Unbounded horizontal parent: shrink-wrap cleanly without flex
+            return Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (icon != null) ...[
+                  Icon(icon, size: 18, color: SentinelColors.accent),
+                  const SizedBox(width: SentinelSpacing.sm),
+                ],
+                Text(
+                  title,
+                  style: SentinelTypography.headlineMedium,
+                ),
+                if (trailing != null) ...[
+                  const SizedBox(width: SentinelSpacing.sm),
+                  trailing!,
+                ],
+              ],
+            );
+          }
+
+          // Bounded parent (standard card/page): stretch across full width
+          return Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Flexible(
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (icon != null) ...[
+                      Icon(icon, size: 18, color: SentinelColors.accent),
+                      const SizedBox(width: SentinelSpacing.sm),
+                    ],
+                    Flexible(
+                      child: Text(
+                        title,
+                        style: SentinelTypography.headlineMedium,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              if (trailing != null) ...[
+                const SizedBox(width: SentinelSpacing.sm),
+                trailing!,
+              ],
+            ],
+          );
+        },
       ),
     );
   }

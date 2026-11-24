@@ -8,6 +8,7 @@ import 'dart:ui';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sentinel_x/core/utils/platform_utils.dart';
+import 'package:sentinel_x/core/providers/providers.dart';
 
 // ─────────────────────────────────────────────────
 // ENUMS & MODELS
@@ -62,18 +63,23 @@ class VideoFrameMetadata {
 
   /// Generates a normalized Float32 planar tensor [1, 3, targetH, targetW]
   /// for direct consumption by ONNX Runtime Dart bindings.
-  Float32List toNormalizedTensor({int targetWidth = 640, int targetHeight = 640}) {
+  Float32List toNormalizedTensor({
+    int targetWidth = 224,
+    int targetHeight = 224,
+    List<double> mean = const [0.485, 0.456, 0.406],
+    List<double> std = const [0.229, 0.224, 0.225],
+  }) {
     final tensorSize = 1 * 3 * targetHeight * targetWidth;
     final tensor = Float32List(tensorSize);
 
-    // If raw buffer is present, map and normalize byte range [0..255] to [0.0..1.0]
+    // If raw buffer is present, map and normalize byte range [0..255] with ImageNet statistics
     if (rawBuffer != null && rawBuffer!.isNotEmpty) {
       final buffer = rawBuffer!;
       final channelSize = targetWidth * targetHeight;
       for (int i = 0; i < channelSize && (i * 3 + 2) < buffer.length; i++) {
-        tensor[i] = buffer[i * 3] / 255.0; // R plane
-        tensor[channelSize + i] = buffer[i * 3 + 1] / 255.0; // G plane
-        tensor[2 * channelSize + i] = buffer[i * 3 + 2] / 255.0; // B plane
+        tensor[i] = (buffer[i * 3] / 255.0 - mean[0]) / std[0]; // R plane
+        tensor[channelSize + i] = (buffer[i * 3 + 1] / 255.0 - mean[1]) / std[1]; // G plane
+        tensor[2 * channelSize + i] = (buffer[i * 3 + 2] / 255.0 - mean[2]) / std[2]; // B plane
       }
     } else {
       // Synthetic baseline normalization
@@ -154,7 +160,9 @@ class VideoFeedState {
 
 class VideoFeedController {
   final _random = Random();
+  final CameraIngestionService? ingestionService;
   Timer? _frameExtractionTimer;
+  StreamSubscription<CameraFrame>? _cameraFrameSub;
 
   final StreamController<VideoFeedState> _stateController =
       StreamController<VideoFeedState>.broadcast();
@@ -168,6 +176,8 @@ class VideoFeedController {
   VideoFeedState get state => _state;
 
   int _frameIndex = 0;
+
+  VideoFeedController({this.ingestionService});
 
   void _updateState(VideoFeedState newState) {
     _state = newState;
@@ -225,25 +235,61 @@ class VideoFeedController {
       errorMessage: null,
     ));
 
-    startStream();
+    await startStream();
   }
 
-  /// Starts the video frame capture and metadata extraction loop (30 FPS).
-  void startStream() {
+  /// Starts the video frame capture and metadata extraction loop.
+  Future<void> startStream() async {
     if (_state.isStreaming) return;
 
     _updateState(_state.copyWith(isStreaming: true));
 
-    // 33ms interval ≈ 30 FPS stream extraction rate
-    _frameExtractionTimer?.cancel();
-    _frameExtractionTimer = Timer.periodic(
-      const Duration(milliseconds: 33),
-      (_) => _extractNextFrame(),
-    );
+    if (_state.sourceType == VideoSourceType.localCamera && ingestionService != null) {
+      if (ingestionService!.controller == null || !ingestionService!.controller!.value.isInitialized) {
+        final ok = await ingestionService!.initialize();
+        if (!ok) {
+          _updateState(_state.copyWith(
+            isStreaming: false,
+            errorMessage: ingestionService!.currentTelemetry.errorMessage ?? 'Failed to initialize camera.',
+          ));
+          return;
+        }
+      }
+      await ingestionService!.startIngestion();
+      _cameraFrameSub?.cancel();
+      _cameraFrameSub = ingestionService!.frameStream.listen((CameraFrame frame) {
+        if (_frameStreamController.isClosed) return;
+        final meta = VideoFrameMetadata(
+          frameIndex: frame.frameIndex,
+          width: frame.width,
+          height: frame.height,
+          timestamp: frame.timestamp,
+          pixelFormat: frame.pixelFormat,
+          sourceCameraId: frame.cameraId,
+          currentFps: ingestionService!.currentTelemetry.measuredFps,
+          rawBuffer: frame.rgbBytes,
+        );
+        _frameStreamController.add(meta);
+        _updateState(_state.copyWith(
+          frameCount: frame.frameIndex,
+          currentFps: ingestionService!.currentTelemetry.measuredFps,
+        ));
+      });
+    } else {
+      // 33ms interval ≈ 30 FPS stream extraction rate for non-hardware synthetic simulations
+      _frameExtractionTimer?.cancel();
+      _frameExtractionTimer = Timer.periodic(
+        const Duration(milliseconds: 33),
+        (_) => _extractNextFrame(),
+      );
+    }
   }
 
   /// Stops stream capture.
   void stopStream() {
+    _cameraFrameSub?.cancel();
+    _cameraFrameSub = null;
+    ingestionService?.pauseIngestion();
     _frameExtractionTimer?.cancel();
     _frameExtractionTimer = null;
     _updateState(_state.copyWith(isStreaming: false));
@@ -305,7 +351,8 @@ class VideoFeedController {
 // ─────────────────────────────────────────────────
 
 final videoFeedControllerProvider = Provider<VideoFeedController>((ref) {
-  final controller = VideoFeedController();
+  final ingestionService = ref.watch(cameraIngestionServiceProvider);
+  final controller = VideoFeedController(ingestionService: ingestionService);
   controller.initializeSource(type: VideoSourceType.localCamera);
   ref.onDispose(() => controller.dispose());
   return controller;

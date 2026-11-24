@@ -11,11 +11,27 @@ import 'package:sentinel_x/core/models/models.dart';
 import 'package:sentinel_x/core/providers/providers.dart';
 import 'package:sentinel_x/shared/widgets/sentinel_widgets.dart';
 
-class AudioPage extends ConsumerWidget {
+class AudioPage extends ConsumerStatefulWidget {
   const AudioPage({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<AudioPage> createState() => _AudioPageState();
+}
+
+class _AudioPageState extends ConsumerState<AudioPage> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(audioIngestionServiceProvider).startStreaming().catchError((e) {
+        debugPrint('[AudioPage] Auto-start audio streaming note: $e');
+        return false;
+      });
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final width = MediaQuery.of(context).size.width;
     final isWide = width >= 1000;
 
@@ -123,74 +139,99 @@ class _LiveWaveformCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final frameAsync = ref.watch(audioStreamFrameProvider);
+    final frame = frameAsync.valueOrNull ?? AudioStreamFrame.ambient();
+
     final audioAsync = ref.watch(audioStreamProvider);
     final latestEvent = audioAsync.valueOrNull;
+
+    final audioTelemAsync = ref.watch(audioTelemetryStreamProvider);
+    final telem = audioTelemAsync.valueOrNull;
+    final isStreaming = telem != null && telem.status == AudioConnectionStatus.streaming;
+
+    final double displayDb = isStreaming ? telem.currentDbFs : frame.decibels;
+    final String devName = telem?.deviceName.isNotEmpty == true ? telem!.deviceName : 'Realtek High Definition Audio';
+    final String stateLabel = isStreaming ? telem.acousticStateLabel : 'AWAITING HARDWARE';
+
+    final bool isSpike = isStreaming ? telem.isAcousticPeak : frame.isAudioSpike;
+    final Color badgeColor = isSpike
+        ? SentinelColors.threatCritical
+        : (displayDb > -40.0 ? SentinelColors.accent : SentinelColors.textSecondary);
 
     return GlassCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              const SectionHeader(
-                title: 'Live Audio Waveform',
-                icon: Icons.graphic_eq_rounded,
-              ),
-              const Spacer(),
-              if (latestEvent != null) ...[
+          SectionHeader(
+            title: 'Live Audio Waveform ($devName)',
+            icon: Icons.graphic_eq_rounded,
+            trailing: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
                 Container(
                   padding: const EdgeInsets.symmetric(
-                    horizontal: 8, vertical: 3,
+                    horizontal: 8,
+                    vertical: 3,
                   ),
                   decoration: BoxDecoration(
-                    color: latestEvent.threat.color.withValues(alpha: 0.12),
+                    color: badgeColor.withValues(alpha: 0.12),
                     borderRadius: SentinelRadius.smAll,
+                    border: Border.all(color: badgeColor.withValues(alpha: 0.4)),
                   ),
                   child: Text(
-                    '${latestEvent.decibelLevel.toStringAsFixed(0)} dB',
+                    '${displayDb.toStringAsFixed(1)} dBFS',
                     style: SentinelTypography.monoMedium.copyWith(
-                      color: latestEvent.threat.color,
+                      color: badgeColor,
                       fontSize: 12,
+                      fontWeight: FontWeight.bold,
                     ),
                   ),
                 ),
-                const SizedBox(width: 8),
-                ThreatBadge(level: latestEvent.threat, compact: true),
+                if (latestEvent != null) ...[
+                  const SizedBox(width: 8),
+                  ThreatBadge(level: latestEvent.threat, compact: true),
+                ],
               ],
-            ],
+            ),
           ),
           const SizedBox(height: SentinelSpacing.md),
           SizedBox(
             height: 120,
-            child: latestEvent != null
+            child: (frame.frequencies.any((f) => f > 0.005) || isStreaming)
                 ? _WaveformVisualizer(
-                    bands: latestEvent.frequencyBands,
-                    threatColor: latestEvent.threat.color,
+                    bands: frame.frequencies,
+                    threatColor: isSpike ? SentinelColors.threatCritical : SentinelColors.accent,
                   )
                 : Center(
                     child: Text(
-                      'Awaiting audio data...',
+                      isStreaming
+                          ? 'Microphone active • $stateLabel'
+                          : 'Awaiting audio data...',
                       style: SentinelTypography.bodyMedium,
                     ),
                   ),
           ),
-          if (latestEvent != null) ...[
+          if (latestEvent != null || isStreaming) ...[
             const SizedBox(height: SentinelSpacing.sm),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  'Classification: ${latestEvent.classification.toUpperCase()}',
+                  latestEvent != null
+                      ? 'Classification: ${latestEvent.classification.toUpperCase()}'
+                      : 'Classification: MODEL UNVALIDATED // $stateLabel',
                   style: SentinelTypography.monoSmall.copyWith(
-                    color: SentinelColors.accent,
+                    color: latestEvent != null ? SentinelColors.threatCritical : SentinelColors.accent,
                   ),
                 ),
                 Text(
-                  'Confidence: ${(latestEvent.confidence * 100).toStringAsFixed(1)}%',
+                  latestEvent != null
+                      ? 'Confidence: ${(latestEvent.confidence * 100).toStringAsFixed(1)}%'
+                      : 'Signal: ${displayDb > -75.0 ? "LIVE RAW PCM" : "DIGITAL SILENCE"}',
                   style: SentinelTypography.monoSmall,
                 ),
                 Text(
-                  'Source: ${latestEvent.cameraId}',
+                  'Source: ${latestEvent?.cameraId ?? devName}',
                   style: SentinelTypography.monoSmall,
                 ),
               ],
@@ -234,7 +275,9 @@ class _WaveformPainter extends CustomPainter {
     final maxHeight = size.height * 0.9;
 
     for (int i = 0; i < bands.length; i++) {
-      final barHeight = bands[i] * maxHeight;
+      final value = bands[i].clamp(0.0, 1.0);
+      if (value < 0.005) continue;
+      final barHeight = value * maxHeight;
       final x = i * barWidth;
       final y = (size.height - barHeight) / 2;
 
@@ -277,7 +320,7 @@ class _WaveformPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(_WaveformPainter oldDelegate) =>
-      oldDelegate.bands != bands;
+      oldDelegate.bands != bands || oldDelegate.color != color;
 }
 
 // ─────────────────────────────────────────────────
@@ -310,8 +353,9 @@ class _AudioEventTimeline extends ConsumerWidget {
               padding: const EdgeInsets.all(SentinelSpacing.xxl),
               child: Center(
                 child: Text(
-                  'No audio events recorded',
+                  'No acoustic anomalies detected\n(Physical microphone actively monitoring)',
                   style: SentinelTypography.bodyMedium,
+                  textAlign: TextAlign.center,
                 ),
               ),
             )
@@ -409,8 +453,9 @@ class _AudioClassificationSummary extends ConsumerWidget {
               padding: const EdgeInsets.all(SentinelSpacing.xl),
               child: Center(
                 child: Text(
-                  'No classifications yet',
+                  'No classifications yet\n(Awaiting ONNX anomaly verification)',
                   style: SentinelTypography.bodyMedium,
+                  textAlign: TextAlign.center,
                 ),
               ),
             )

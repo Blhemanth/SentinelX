@@ -79,11 +79,16 @@ class BoundingBoxCustomPainter extends CustomPainter {
     if (size.width == 0 || size.height == 0) return;
 
     final normRect = payload.boundingBox;
+    final clampedX = normRect.left.clamp(0.0, 1.0);
+    final clampedY = normRect.top.clamp(0.0, 1.0);
+    final renderW = max(0.0, min(normRect.width, 1.0 - clampedX));
+    final renderH = max(0.0, min(normRect.height, 1.0 - clampedY));
+
     // Scale normalized 0..1 coordinates to actual viewport size
-    final left = normRect.left * size.width;
-    final top = normRect.top * size.height;
-    final width = normRect.width * size.width;
-    final height = normRect.height * size.height;
+    final left = clampedX * size.width;
+    final top = clampedY * size.height;
+    final width = renderW * size.width;
+    final height = renderH * size.height;
     final targetRect = Rect.fromLTWH(left, top, width, height);
 
     final color = payload.threatColor;

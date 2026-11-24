@@ -11,7 +11,14 @@
 const express = require('express');
 const router = express.Router();
 const {
-  getLogs, getLogById, createLog, acknowledgeLog, deleteLog, getStats,
+  getLogs,
+  getLogById,
+  createLog,
+  updateDispatchStatus,
+  mockTrigger,
+  acknowledgeLog,
+  deleteLog,
+  getStats,
 } = require('../controllers/logs.controller');
 const { authenticate } = require('../middleware/auth');
 const { requireMinRole, requireRole } = require('../middleware/rbac');
@@ -19,7 +26,9 @@ const { requireMinRole, requireRole } = require('../middleware/rbac');
 router.get('/stats', authenticate, getStats);
 router.get('/', authenticate, getLogs);
 router.get('/:id', authenticate, getLogById);
-router.post('/', authenticate, requireMinRole('analyst'), createLog);
+router.post('/', authenticate, createLog);
+router.post('/trigger', authenticate, requireMinRole('analyst'), mockTrigger);
+router.patch('/:id/dispatch', authenticate, requireMinRole('analyst'), updateDispatchStatus);
 router.patch('/:id/acknowledge', authenticate, requireMinRole('analyst'), acknowledgeLog);
 router.delete('/:id', authenticate, requireRole('admin'), deleteLog);
 

@@ -1,14 +1,15 @@
 // SentinelX - Dynamic Audio Spectrum Visualizer & Microphone Stream Capture
-// Real-time audio frequency bars, decibel level gauge, and audio spike detection (screams, gunshots).
-// Hardware-accelerated CustomPainter with glowing peak-hold indicators.
+// Real-time audio frequency bars, decibel level gauge, and audio spike detection.
+// Grounded strictly on physical PCM sample buffers and 1024-point Radix-2 FFT spectral analysis.
+// Zero mock/random jitter: displays true dBFS (<= 0.0 dBFS) and physical acoustic energy.
 
 import 'dart:async';
-import 'dart:math';
+import 'dart:math' as math;
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sentinel_x/core/theme/sentinel_theme.dart';
-import 'package:sentinel_x/services/mock_inference_service.dart';
-import 'package:sentinel_x/services/inference_repository.dart';
+import 'package:sentinel_x/core/providers/providers.dart';
 
 // ─────────────────────────────────────────────────
 // AUDIO STREAM MODELS & SERVICE
@@ -17,9 +18,9 @@ import 'package:sentinel_x/services/inference_repository.dart';
 @immutable
 class AudioStreamFrame {
   final List<double> frequencies; // 20 spectral band magnitudes (0.0 to 1.0)
-  final double decibels; // Current sound pressure level in dB
-  final double peakDecibels; // Peak hold level
-  final bool isAudioSpike; // True if sudden spike (>85 dB or acoustic threat)
+  final double decibels; // Current sound level in dBFS (<= 0.0 dBFS)
+  final double peakDecibels; // Peak hold level in dBFS
+  final bool isAudioSpike; // True if sudden spike (> -18.0 dBFS or acoustic threat)
   final String? anomalyLabel; // 'Gunshot Audio', 'Explosion', 'Scream', etc.
   final DateTime timestamp;
 
@@ -34,9 +35,9 @@ class AudioStreamFrame {
 
   factory AudioStreamFrame.ambient() {
     return AudioStreamFrame(
-      frequencies: List.generate(20, (i) => 0.12 + (i % 4) * 0.05),
-      decibels: 52.0,
-      peakDecibels: 58.0,
+      frequencies: List.filled(20, 0.0),
+      decibels: -80.0,
+      peakDecibels: -80.0,
       isAudioSpike: false,
       timestamp: DateTime.now(),
     );
@@ -44,7 +45,21 @@ class AudioStreamFrame {
 }
 
 class AudioCaptureService {
-  final _random = Random();
+  final TemporalAudioBuffer? _temporalBuffer;
+  final Radix2FFT1024 _fft = Radix2FFT1024();
+  final Float32List _powerSpectrum = Float32List(513);
+
+  // 20 Logarithmic/Auditory Band Bin Boundaries across 513 FFT bins (16 kHz / 1024 = 15.625 Hz/bin)
+  // Covers ~31 Hz to 8000 Hz
+  static const List<int> _bandStartBins = [
+    2, 4, 6, 9, 13, 18, 25, 34, 46, 61,
+    81, 106, 137, 176, 223, 279, 345, 419, 481, 501
+  ];
+  static const List<int> _bandEndBins = [
+    3, 5, 8, 12, 17, 24, 33, 45, 60, 80,
+    105, 136, 175, 222, 278, 344, 418, 480, 500, 512
+  ];
+
   Timer? _captureTimer;
 
   final StreamController<AudioStreamFrame> _audioStreamController =
@@ -52,17 +67,20 @@ class AudioCaptureService {
 
   Stream<AudioStreamFrame> get stream => _audioStreamController.stream;
 
-  double _peakDecibels = 55.0;
+  double _peakDecibels = -80.0;
   bool _isCapturing = false;
   bool get isCapturing => _isCapturing;
 
-  final List<double> _peakHolds = List.filled(20, 0.2);
+  final List<double> _peakHolds = List.filled(20, 0.0);
+
+  AudioCaptureService({TemporalAudioBuffer? temporalBuffer})
+      : _temporalBuffer = temporalBuffer;
 
   void startCapture() {
     if (_isCapturing) return;
     _isCapturing = true;
 
-    // 40ms timer ≈ 25 FPS audio analysis update rate
+    // 40ms timer = 25 FPS audio analysis update rate
     _captureTimer = Timer.periodic(
       const Duration(milliseconds: 40),
       (_) => _processAudioWindow(),
@@ -78,7 +96,7 @@ class AudioCaptureService {
   void ingestInferenceAudio(InferencePayload payload) {
     if (_audioStreamController.isClosed) return;
 
-    final isSpike = payload.decibels > 85.0 ||
+    final isSpike = payload.decibels > -18.0 ||
         payload.threatType.contains('Gunshot') ||
         payload.threatType.contains('Explosion');
 
@@ -99,24 +117,80 @@ class AudioCaptureService {
   void _processAudioWindow() {
     if (_audioStreamController.isClosed) return;
 
-    // Ambient microphone noise simulation with subtle jitter
-    final ambientDb = 48.0 + _random.nextDouble() * 12.0;
-    final isSpike = ambientDb > 85.0;
+    final buffer = _temporalBuffer;
+    if (buffer == null || buffer.currentCount == 0) {
+      _peakDecibels = math.max(-80.0, _peakDecibels - 0.4);
+      _audioStreamController.add(AudioStreamFrame(
+        frequencies: List.filled(20, 0.0),
+        decibels: -80.0,
+        peakDecibels: _peakDecibels,
+        isAudioSpike: false,
+        timestamp: DateTime.now(),
+      ));
+      return;
+    }
 
-    // Slowly decay peak decibels
-    _peakDecibels = max(ambientDb, _peakDecibels * 0.992);
+    // Extract 1024-sample snapshot for real-time FFT
+    final samples = buffer.extractSnapshot(1024);
 
-    final freqs = List.generate(20, (i) {
-      final rollOff = 1.0 - (i / 24.0);
-      final raw = (0.15 + _random.nextDouble() * 0.25) * rollOff;
-      // Decay peak hold
-      _peakHolds[i] = max(raw, _peakHolds[i] * 0.96);
-      return raw.clamp(0.05, 1.0);
-    });
+    // Compute RMS and dBFS
+    double sumSq = 0.0;
+    for (int i = 0; i < 1024; i++) {
+      final s = samples[i];
+      sumSq += s * s;
+    }
+    final rms = math.sqrt(sumSq / 1024.0);
+    final double currentDbFs = (rms > 1e-4)
+        ? (20.0 * math.log(rms) / math.ln10).clamp(-80.0, 0.0)
+        : -80.0;
+
+    // Update peak decibel with decay
+    if (currentDbFs > _peakDecibels) {
+      _peakDecibels = currentDbFs;
+    } else {
+      _peakDecibels = math.max(-80.0, _peakDecibels - 0.4);
+    }
+
+    final isSpike = currentDbFs > -18.0;
+
+    // Compute 20-band FFT spectrum from real PCM samples
+    final freqs = List<double>.filled(20, 0.0);
+
+    if (currentDbFs > -75.0) {
+      _fft.computePowerSpectrum(samples, _powerSpectrum);
+
+      for (int i = 0; i < 20; i++) {
+        final start = _bandStartBins[i];
+        final end = _bandEndBins[i];
+        final count = end - start + 1;
+
+        double bandSum = 0.0;
+        for (int k = start; k <= end; k++) {
+          bandSum += _powerSpectrum[k];
+        }
+        final avgPower = bandSum / count;
+
+        double mag = 0.0;
+        if (avgPower > 1e-8) {
+          final bandDb = 10.0 * math.log(avgPower) / math.ln10;
+          mag = ((bandDb + 80.0) / 80.0).clamp(0.0, 1.0);
+        }
+
+        // Apply peak hold decay
+        _peakHolds[i] = math.max(mag, _peakHolds[i] * 0.90);
+        freqs[i] = _peakHolds[i];
+      }
+    } else {
+      // Digital silence: decay peak holds to zero
+      for (int i = 0; i < 20; i++) {
+        _peakHolds[i] = math.max(0.0, _peakHolds[i] * 0.85);
+        freqs[i] = _peakHolds[i];
+      }
+    }
 
     _audioStreamController.add(AudioStreamFrame(
       frequencies: freqs,
-      decibels: ambientDb,
+      decibels: currentDbFs,
       peakDecibels: _peakDecibels,
       isAudioSpike: isSpike,
       timestamp: DateTime.now(),
@@ -134,7 +208,8 @@ class AudioCaptureService {
 // ─────────────────────────────────────────────────
 
 final audioCaptureServiceProvider = Provider<AudioCaptureService>((ref) {
-  final service = AudioCaptureService();
+  final buffer = ref.watch(temporalAudioBufferProvider);
+  final service = AudioCaptureService(temporalBuffer: buffer);
   service.startCapture();
 
   // Listen to inference payloads to inject acoustic spikes
@@ -177,10 +252,19 @@ class AudioSpectrumVisualizer extends ConsumerWidget {
     final frameAsync = ref.watch(audioStreamFrameProvider);
     final frame = frameAsync.value ?? AudioStreamFrame.ambient();
 
-    final isSpike = frame.isAudioSpike;
+    final audioTelemAsync = ref.watch(audioTelemetryStreamProvider);
+    final telem = audioTelemAsync.valueOrNull;
+    final isHardwareStreaming = telem != null && telem.status == AudioConnectionStatus.streaming;
+
+    final double displayDb = isHardwareStreaming ? telem.currentDbFs : frame.decibels;
+    final String acousticLabel = isHardwareStreaming
+        ? telem.acousticStateLabel
+        : (frame.decibels <= -75.0 ? 'DIGITAL SILENCE (-80 dBFS)' : 'AMBIENT ROOM NOISE');
+
+    final isSpike = isHardwareStreaming ? telem.isAcousticPeak : frame.isAudioSpike;
     final primaryColor = isSpike
         ? SentinelColors.threatCritical
-        : (frame.decibels > 75.0 ? SentinelColors.threatHigh : SentinelColors.accent);
+        : (displayDb > -20.0 ? SentinelColors.threatHigh : SentinelColors.accent);
 
     return Container(
       height: height,
@@ -211,7 +295,9 @@ class AudioSpectrumVisualizer extends ConsumerWidget {
                   child: Text(
                     isSpike
                         ? '⚠️ ACOUSTIC SPIKE DETECTED'
-                        : 'LIVE AUDIO SPECTRUM // 20-BAND',
+                        : (isHardwareStreaming
+                            ? 'MIC // $acousticLabel'
+                            : 'LIVE AUDIO SPECTRUM // 20-BAND'),
                     style: SentinelTypography.headlineMedium.copyWith(
                       fontSize: 12,
                       color: isSpike ? SentinelColors.threatCritical : SentinelColors.textPrimary,
@@ -230,7 +316,7 @@ class AudioSpectrumVisualizer extends ConsumerWidget {
                     border: Border.all(color: primaryColor),
                   ),
                   child: Text(
-                    '${frame.decibels.toStringAsFixed(1)} dB SPL',
+                    '${displayDb.toStringAsFixed(1)} dBFS',
                     style: SentinelTypography.monoSmall.copyWith(
                       color: primaryColor,
                       fontWeight: FontWeight.bold,
@@ -309,16 +395,18 @@ class AudioWaveformCustomPainter extends CustomPainter {
     canvas.drawLine(Offset(0, size.height * 0.50), Offset(size.width, size.height * 0.50), gridPaint);
     canvas.drawLine(Offset(0, size.height * 0.75), Offset(size.width, size.height * 0.75), gridPaint);
 
-    // 2. Draw Threshold Warning Line at 85 dB (equivalent to ~70% height)
+    // 2. Draw Threshold Warning Line at -18.0 dBFS (equivalent to 77.5% height)
     final thresholdPaint = Paint()
-      ..color = SentinelColors.threatCritical.withValues(alpha: 0.3)
+      ..color = SentinelColors.threatCritical.withValues(alpha: 0.35)
       ..strokeWidth = 1.0;
-    final threshY = size.height * (1.0 - (85.0 / 120.0));
+    final threshY = size.height * (1.0 - 0.775);
     canvas.drawLine(Offset(0, threshY), Offset(size.width, threshY), thresholdPaint);
 
     // 3. Render 20 Spectral Frequency Bars
     for (int i = 0; i < count; i++) {
-      final value = frequencies[i].clamp(0.04, 1.0);
+      final value = frequencies[i].clamp(0.0, 1.0);
+      if (value < 0.005) continue; // Zero bar or digital silence, do not draw fake bar
+
       final barHeight = value * size.height;
       final x = i * (barWidth + spacing);
       final y = size.height - barHeight;

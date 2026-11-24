@@ -10,6 +10,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:sentinel_x/services/mock_inference_service.dart';
 import 'package:sentinel_x/services/onnx_inference_engine.dart';
+import 'package:sentinel_x/services/onnx_native_bridge.dart';
+import 'package:sentinel_x/core/ml/continuous_inference_scheduler.dart';
 
 enum ActiveInferenceMode {
   onnxNative,
@@ -137,7 +139,7 @@ class InferenceRepository {
           isModelLoaded: true,
           modelPath: detectedPath,
           showSimulationBanner: false,
-          bannerMessage: 'DirectML / ONNX Runtime Active',
+          bannerMessage: 'CPUExecutionProvider (AVX2) Active',
           metadata: _onnxEngine.metadata,
         ));
         return;
@@ -226,12 +228,51 @@ class InferenceRepository {
     return latency;
   }
 
+  /// Benchmarks genuine native in-process ONNX Runtime execution via Dart FFI.
+  /// Strict Safety: labeled as synthetic test input, never persisted or dispatched.
+  Future<NativeBenchmarkResult> benchmarkNativeOnnx({int passes = 3}) async {
+    final nativeBridge = OnnxNativeBridge();
+    final result = await nativeBridge.runBenchmark(passes: passes);
+    _updateState(_state.copyWith(
+      lastInferenceLatencyMs: result.averageLatencyMs.round(),
+    ));
+    return result;
+  }
+
+  StreamSubscription<ContinuousInferencePrediction>? _schedulerSubscription;
+
+  /// Binds the real-time continuous ONNX scheduler to the unified payload stream.
+  void bindScheduler(ContinuousInferenceScheduler scheduler) {
+    _schedulerSubscription?.cancel();
+    _schedulerSubscription = scheduler.predictionStream.listen((pred) {
+      if (_unifiedPayloadController.isClosed) return;
+
+      final payload = InferencePayload(
+        threatType: pred.predictedClass,
+        confidence: pred.calibratedConfidence ?? pred.confidence,
+        boundingBox: Rect.fromLTWH(
+          pred.clippedBoundingBox[0],
+          pred.clippedBoundingBox[1],
+          pred.clippedBoundingBox[2],
+          pred.clippedBoundingBox[3],
+        ),
+        audioFrequencies: List.generate(20, (i) => (0.15 + (i % 5) * 0.08).clamp(0.05, 1.0)),
+        timestamp: pred.timestamp,
+        sourceCameraId: pred.cameraId,
+        decibels: pred.audioQuality?.dbLevel ?? -45.0,
+        location: 'Laptop Camera 1 (Physical Hardware Webcam)',
+      );
+      _unifiedPayloadController.add(payload);
+    });
+  }
+
   /// Dismiss the simulation warning banner.
   void dismissBanner() {
     _updateState(_state.copyWith(showSimulationBanner: false));
   }
 
   void dispose() {
+    _schedulerSubscription?.cancel();
     _mockSubscription?.cancel();
     _unifiedPayloadController.close();
     _stateController.close();

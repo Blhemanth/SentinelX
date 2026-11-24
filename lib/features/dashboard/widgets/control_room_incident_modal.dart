@@ -51,11 +51,17 @@ class ControlRoomIncidentModal extends ConsumerWidget {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
               decoration: BoxDecoration(
-                color: SentinelColors.threatCritical.withValues(alpha: 0.15),
+                color: (incident.isDrillSimulation
+                        ? SentinelColors.threatMedium
+                        : SentinelColors.threatCritical)
+                    .withValues(alpha: 0.15),
                 borderRadius: const BorderRadius.vertical(top: Radius.circular(11)),
                 border: Border(
                   bottom: BorderSide(
-                    color: SentinelColors.threatCritical.withValues(alpha: 0.3),
+                    color: (incident.isDrillSimulation
+                            ? SentinelColors.threatMedium
+                            : SentinelColors.threatCritical)
+                        .withValues(alpha: 0.3),
                   ),
                 ),
               ),
@@ -64,16 +70,26 @@ class ControlRoomIncidentModal extends ConsumerWidget {
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                     decoration: BoxDecoration(
-                      color: SentinelColors.threatCritical,
+                      color: incident.isDrillSimulation
+                          ? SentinelColors.threatMedium
+                          : SentinelColors.threatCritical,
                       borderRadius: BorderRadius.circular(4),
                     ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Icon(Icons.warning_amber_rounded, size: 14, color: Colors.white),
+                        Icon(
+                          incident.isDrillSimulation
+                              ? Icons.model_training
+                              : Icons.warning_amber_rounded,
+                          size: 14,
+                          color: Colors.white,
+                        ),
                         const SizedBox(width: 4),
                         Text(
-                          'CONTROL ROOM // DISTRESS DISPATCH',
+                          incident.isDrillSimulation
+                              ? 'TRAINING DRILL // SIMULATION EXERCISE'
+                              : 'CONTROL ROOM // DISTRESS DISPATCH',
                           style: SentinelTypography.monoSmall.copyWith(
                             color: Colors.white,
                             fontWeight: FontWeight.bold,
@@ -86,7 +102,7 @@ class ControlRoomIncidentModal extends ConsumerWidget {
                   const SizedBox(width: 12),
                   Expanded(
                     child: Text(
-                      'INCIDENT ID: ${incident.id}',
+                      'MONGODB ID: ${incident.id}${incident.isDrillSimulation ? " [SIMULATION]" : ""}',
                       style: SentinelTypography.monoSmall.copyWith(
                         color: SentinelColors.textSecondary,
                         fontSize: 11,
@@ -174,16 +190,19 @@ class ControlRoomIncidentModal extends ConsumerWidget {
                               .assignToPolice(incident.id);
                           Navigator.of(context).pop();
 
+                          final isDrill = incident.isDrillSimulation;
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
-                              backgroundColor: const Color(0xFF1E88E5),
+                              backgroundColor: isDrill ? const Color(0xFFE65100) : const Color(0xFF1E88E5),
                               content: Row(
                                 children: [
-                                  const Icon(Icons.local_police, color: Colors.white),
+                                  Icon(isDrill ? Icons.model_training : Icons.local_police, color: Colors.white),
                                   const SizedBox(width: 10),
                                   Expanded(
                                     child: Text(
-                                      'INCIDENT ${incident.id} ASSIGNED TO POLICE DISPATCH UNIT #104!',
+                                      isDrill
+                                          ? 'DRILL SIMULATION ${incident.id} ASSIGNED TO SIMULATED TRAINING UNIT #104'
+                                          : 'INCIDENT ${incident.id} ASSIGNED TO POLICE DISPATCH UNIT #104!',
                                       style: const TextStyle(fontWeight: FontWeight.bold),
                                     ),
                                   ),
@@ -200,15 +219,24 @@ class ControlRoomIncidentModal extends ConsumerWidget {
                             ),
                           );
                         },
-                        icon: const Icon(Icons.local_police, color: Colors.white),
+                        icon: Icon(
+                          incident.isDrillSimulation ? Icons.model_training : Icons.local_police,
+                          color: Colors.white,
+                        ),
                         label: Text(
-                          incident.isAssignedToPolice
-                              ? 'RE-ESCALATE TO POLICE'
-                              : 'ASSIGN TO POLICE DISPATCH',
+                          incident.isDrillSimulation
+                              ? (incident.isAssignedToPolice
+                                  ? 'UPDATE SIMULATED DISPATCH'
+                                  : 'ASSIGN TO SIMULATED POLICE UNIT')
+                              : (incident.isAssignedToPolice
+                                  ? 'RE-ESCALATE TO POLICE'
+                                  : 'ASSIGN TO POLICE DISPATCH'),
                           style: const TextStyle(fontWeight: FontWeight.bold, letterSpacing: 1),
                         ),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF2979FF),
+                          backgroundColor: incident.isDrillSimulation
+                              ? SentinelColors.threatMedium
+                              : const Color(0xFF2979FF),
                           foregroundColor: Colors.white,
                           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
                         ),

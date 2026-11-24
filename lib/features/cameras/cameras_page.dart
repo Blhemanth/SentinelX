@@ -230,11 +230,14 @@ class _CameraCardState extends ConsumerState<_CameraCard> {
             child: Stack(
               fit: StackFit.expand,
               children: [
-                // Real Hardware Laptop Camera Feed with canvas fallback
+                // Real Hardware Laptop Camera Feed for CAM-001; Simulated CCTV for other cameras
                 if (!isOffline)
-                  HardwareCameraView(
-                    fallback: _SimulatedVideoCanvas(cameraId: widget.camera.id),
-                  )
+                  if (widget.camera.id == 'CAM-001')
+                    HardwareCameraView(
+                      fallback: _SimulatedVideoCanvas(cameraId: widget.camera.id),
+                    )
+                  else
+                    _SimulatedVideoCanvas(cameraId: widget.camera.id)
                 else
                   _OfflineOverlay(),
 

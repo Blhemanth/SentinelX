@@ -121,20 +121,34 @@ flutter run -d windows
 
 ---
 
-### Step 3 (Optional): Start the Node.js Backend API
-In a second terminal:
+### Step 3: Start the Node.js Express Backend
+In a terminal:
 ```bash
 cd backend
 npm install
 npm start
 ```
 - API server listens on `http://127.0.0.1:3000`.
+- Connects to local MongoDB (`mongodb://127.0.0.1:27017/sentinelx`).
 - Auto-seeds default accounts on startup (`admin`, `police`, `analyst`, `user`).
-- Exposes routes: `/api/auth/*`, `/api/logs/*`, and `/api/detect`.
+- Exposes routes: `/api/auth/*`, `/api/logs/*`, `/api/detect`, and `/health`.
 
 ---
 
-### Step 4 (Optional): Start the Python ML Microservice
+### Step 4: Start the React.js Web Application
+In a second terminal:
+```bash
+cd frontend
+npm install
+npm run dev
+```
+- Command & Dispatch web portal opens on `http://localhost:5173`.
+- Authenticate using the one-click demo role selector pills (`Admin`, `Police`, `Analyst`, `User`).
+- Live-syncs incident logs and police dispatch statuses with MongoDB and the Flutter client.
+
+---
+
+### Step 5 (Optional): Start the Python ML Microservice
 In a third terminal:
 ```bash
 cd server_ml
@@ -187,7 +201,14 @@ SentinelX/
 │   │   ├── routes/                    # API route definitions
 │   │   └── server.js                  # Entry point with seed user auto-initialization
 │   └── package.json
-├── lib/                               # Flutter Frontend
+├── frontend/                          # React.js Vite Web Dashboard
+│   ├── src/
+│   │   ├── api/client.js              # REST client with JWT refresh & logs API
+│   │   ├── components/                # Navbar, Sidebar, IncidentModal
+│   │   ├── context/AuthContext.jsx    # React RBAC authentication context
+│   │   └── views/                     # Dashboard, Incidents, Police, Cameras, DrillTrigger, Settings
+│   └── package.json
+├── lib/                               # Flutter Desktop & Mobile Client
 │   ├── core/
 │   │   ├── models/                    # Camera, Alert, Detection, & Audio entities
 │   │   ├── providers/                 # Riverpod state providers

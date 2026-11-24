@@ -1,0 +1,44 @@
+{
+  "benchmark": "SentinelX Phase 4.3.5 Native Windows GUI Hardware Verification",
+  "hostOs": "windows \"Windows 10 Home Single Language\" 10.0 (Build 26300)",
+  "deviceTarget": "Windows x64 Native Desktop Runner",
+  "cameraHardware": "HP TrueVision HD Camera",
+  "durationSeconds": 60,
+  "renderedUiMetrics": {
+    "totalRenderedFrames": 1328,
+    "averageRenderedFps": 7.73,
+    "jankFrameCount": 73,
+    "jankPercentage": 5.5
+  },
+  "cameraAcquisitionMetrics": {
+    "averageCameraFps": 7.15,
+    "totalFramesCaptured": 4070
+  },
+  "onnxInferenceMetrics": {
+    "totalInferences": 395,
+    "avgTotalLatencyMs": 1698.8,
+    "p50TotalLatencyMs": 1668,
+    "p95TotalLatencyMs": 1932,
+    "avgNativeFfiLatencyMs": 1680.0,
+    "p50NativeFfiLatencyMs": 1652,
+    "p95NativeFfiLatencyMs": 1916,
+    "avgTransferLatencyMs": 4.6,
+    "inferenceThroughputFps": 0.56
+  },
+  "memoryMetrics": {
+    "initialRssMb": 226.4,
+    "peakRssMb": 886.19,
+    "finalRssMb": 807.07,
+    "netDriftMb": 580.67
+  },
+  "contractVerification": {
+    "modelAssetSha256": "79a7b83881078329ce6a4b5d64655823f94432fd340dd6f882d98adc0747fe1f",
+    "videoTensorShape": "[1, 16, 3, 224, 224]",
+    "audioTensorShape": "[1, 1, 128, 128]",
+    "audioBaselineDb": -80.0,
+    "degradedModeEnforced": true,
+    "threatTaxonomyClasses": 5,
+    "boundingBoxCoordinates": 4,
+    "uiIsolateNonBlocking": true
+  }
+}

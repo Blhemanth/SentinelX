@@ -110,16 +110,22 @@ class _IncidentVideoPlayerState extends State<IncidentVideoPlayer>
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                     decoration: BoxDecoration(
-                      color: SentinelColors.threatCritical,
+                      color: widget.incident.isDrillSimulation
+                          ? SentinelColors.threatMedium
+                          : SentinelColors.threatCritical,
                       borderRadius: BorderRadius.circular(3),
                     ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Icon(Icons.circle, size: 8, color: Colors.white),
+                        Icon(
+                          widget.incident.isDrillSimulation ? Icons.model_training : Icons.receipt_long,
+                          size: 9,
+                          color: Colors.white,
+                        ),
                         const SizedBox(width: 4),
                         Text(
-                          'RECORDED CLIP',
+                          widget.incident.isDrillSimulation ? 'DRILL SIMULATION' : 'FORENSIC AUDIT LOG',
                           style: SentinelTypography.monoSmall.copyWith(
                             color: Colors.white,
                             fontWeight: FontWeight.bold,
@@ -147,6 +153,58 @@ class _IncidentVideoPlayerState extends State<IncidentVideoPlayer>
                     ),
                   ),
                 ],
+              ),
+            ),
+
+            // Center Notice: Authentic missing-recording state notice
+            Center(
+              child: Container(
+                margin: const EdgeInsets.symmetric(horizontal: 24),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                decoration: BoxDecoration(
+                  color: Colors.black.withValues(alpha: 0.85),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: widget.incident.isDrillSimulation
+                        ? SentinelColors.threatMedium
+                        : SentinelColors.threatCritical.withValues(alpha: 0.6),
+                  ),
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      widget.incident.isDrillSimulation
+                          ? Icons.model_training
+                          : Icons.videocam_off_outlined,
+                      size: 28,
+                      color: widget.incident.isDrillSimulation
+                          ? SentinelColors.threatMedium
+                          : SentinelColors.textSecondary,
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      widget.incident.isDrillSimulation
+                          ? 'TRAINING DRILL SIMULATION // AUDIT ONLY'
+                          : 'NO VERIFIED RECORDING AVAILABLE',
+                      style: SentinelTypography.monoSmall.copyWith(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 12,
+                        letterSpacing: 1.0,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Disk Video Recording Engine: Offline (Audit-Only Metadata Retained)',
+                      style: SentinelTypography.monoSmall.copyWith(
+                        color: SentinelColors.textTertiary,
+                        fontSize: 10,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
+                ),
               ),
             ),
 
@@ -361,42 +419,7 @@ class _CctvPlaybackPainter extends CustomPainter {
     canvas.drawRect(targetRect, boxFillPaint);
     canvas.drawRect(targetRect, boxBorderPaint);
 
-    // Corner brackets
-    final cornerLen = 14.0;
-    final cornerPaint = Paint()
-      ..color = isDistressSpike ? const Color(0xFFFF3B5C) : const Color(0xFF00E5FF)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 3.0;
-
-    // Top-Left
-    canvas.drawLine(targetRect.topLeft, targetRect.topLeft + Offset(cornerLen, 0), cornerPaint);
-    canvas.drawLine(targetRect.topLeft, targetRect.topLeft + Offset(0, cornerLen), cornerPaint);
-    // Top-Right
-    canvas.drawLine(targetRect.topRight, targetRect.topRight - Offset(cornerLen, 0), cornerPaint);
-    canvas.drawLine(targetRect.topRight, targetRect.topRight + Offset(0, cornerLen), cornerPaint);
-    // Bottom-Left
-    canvas.drawLine(targetRect.bottomLeft, targetRect.bottomLeft + Offset(cornerLen, 0), cornerPaint);
-    canvas.drawLine(targetRect.bottomLeft, targetRect.bottomLeft - Offset(0, cornerLen), cornerPaint);
-    // Bottom-Right
-    canvas.drawLine(targetRect.bottomRight, targetRect.bottomRight - Offset(cornerLen, 0), cornerPaint);
-    canvas.drawLine(targetRect.bottomRight, targetRect.bottomRight - Offset(0, cornerLen), cornerPaint);
-
-    // 5. Subject silhouette / figure placeholder inside bounding box
-    final figurePaint = Paint()
-      ..color = Colors.white.withValues(alpha: 0.18)
-      ..style = PaintingStyle.fill;
-    final headCenter = Offset(targetRect.center.dx, targetRect.top + targetRect.height * 0.25);
-    canvas.drawCircle(headCenter, targetRect.height * 0.12, figurePaint);
-
-    final bodyRect = RRect.fromRectAndRadius(
-      Rect.fromCenter(
-        center: Offset(targetRect.center.dx, targetRect.top + targetRect.height * 0.65),
-        width: targetRect.width * 0.6,
-        height: targetRect.height * 0.55,
-      ),
-      const Radius.circular(8),
-    );
-    canvas.drawRRect(bodyRect, figurePaint);
+    // Corner brackets complete (silhouette removed for telemetry authenticity)
   }
 
   @override

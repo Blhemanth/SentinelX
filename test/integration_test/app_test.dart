@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:sentinel_x/main.dart';
 import 'package:sentinel_x/core/providers/providers.dart';
 import 'package:sentinel_x/features/dashboard/screens/dashboard_screen.dart';
@@ -15,6 +16,7 @@ import 'package:sentinel_x/features/camera/widgets/hardware_camera_view.dart';
 void main() {
   setUp(() {
     SharedPreferences.setMockInitialValues({});
+    FlutterSecureStorage.setMockInitialValues({});
   });
 
   group('SentinelX Multi-Platform Integration Tests', () {
@@ -110,6 +112,7 @@ void main() {
 
     testWidgets('AuthGate presents LoginScreen with RBAC selector pills', (tester) async {
       SharedPreferences.setMockInitialValues({});
+      FlutterSecureStorage.setMockInitialValues({});
       await tester.pumpWidget(
         const ProviderScope(
           child: SentinelXApp(),
