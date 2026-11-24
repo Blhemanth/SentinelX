@@ -11,8 +11,7 @@ import {
   Swords,
   Send,
   CheckCircle2,
-  AlertTriangle,
-  Radio,
+  Sliders,
 } from 'lucide-react';
 
 export const DrillTriggerView = ({ onIncidentTriggered }) => {
@@ -35,8 +34,8 @@ export const DrillTriggerView = ({ onIncidentTriggered }) => {
       title: 'Acoustic Distress: HELP, HELP',
       severity: 'critical',
       icon: Volume2,
-      color: 'border-red-500/40 bg-red-950/20 hover:border-red-500',
-      iconColor: 'text-red-400',
+      color: 'border-sentinel-critical/40 bg-sentinel-critical/10 hover:border-sentinel-critical',
+      iconColor: 'text-sentinel-critical',
       desc: 'Simulates the critical emergency distress keyword "HELP, HELP" with 89.2 dB audio burst.',
       payload: {
         threatClass: 'Acoustic Distress: HELP, HELP',
@@ -69,8 +68,8 @@ export const DrillTriggerView = ({ onIncidentTriggered }) => {
       title: 'Explosion / Fire Hazard',
       severity: 'critical',
       icon: Flame,
-      color: 'border-amber-500/40 bg-amber-950/20 hover:border-amber-500',
-      iconColor: 'text-amber-400',
+      color: 'border-sentinel-warning/40 bg-sentinel-warning/10 hover:border-sentinel-warning',
+      iconColor: 'text-sentinel-warning',
       desc: 'Simulates sudden acoustic concussion (>100 dB) accompanied by thermal flash anomaly.',
       payload: {
         threatClass: 'Explosion',
@@ -103,8 +102,8 @@ export const DrillTriggerView = ({ onIncidentTriggered }) => {
       title: 'Crowd Panic / Stampede',
       severity: 'high',
       icon: Users,
-      color: 'border-blue-500/40 bg-blue-950/20 hover:border-blue-500',
-      iconColor: 'text-blue-400',
+      color: 'border-sentinel-blue/40 bg-sentinel-blue/10 hover:border-sentinel-blue',
+      iconColor: 'text-sentinel-blue',
       desc: 'Simulates sudden crowd divergence and velocity dispersion indicating mass panic.',
       payload: {
         threatClass: 'Crowd Panic',
@@ -175,7 +174,7 @@ export const DrillTriggerView = ({ onIncidentTriggered }) => {
           </h1>
           <span className="badge badge-critical text-[10px]">LIVE INJECTOR</span>
         </div>
-        <p className="text-xs font-mono text-gray-400">
+        <p className="text-xs font-mono text-sentinel-muted">
           Inject real-time anomaly events into MongoDB to verify end-to-end synchronization between Express, React Web, and the Flutter Desktop client.
         </p>
       </div>
@@ -184,15 +183,15 @@ export const DrillTriggerView = ({ onIncidentTriggered }) => {
         <div
           className={`p-4 rounded-xl border text-xs font-mono flex items-center justify-between ${
             resultMsg.type === 'success'
-              ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300'
-              : 'bg-red-500/10 border-red-500/30 text-red-300'
+              ? 'bg-sentinel-success/10 border-sentinel-success/30 text-sentinel-success'
+              : 'bg-sentinel-critical/10 border-sentinel-critical/30 text-sentinel-critical'
           }`}
         >
           <div className="flex items-center gap-2">
-            <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-400" />
+            <CheckCircle2 className="w-4 h-4 shrink-0 text-sentinel-success" />
             <span>{resultMsg.text}</span>
           </div>
-          <button onClick={() => setResultMsg(null)} className="text-gray-400 hover:text-white">
+          <button onClick={() => setResultMsg(null)} className="text-sentinel-muted hover:text-white">
             ✕
           </button>
         </div>
@@ -200,7 +199,7 @@ export const DrillTriggerView = ({ onIncidentTriggered }) => {
 
       {/* 5 Instant Scenario Cards */}
       <div className="space-y-3">
-        <label className="block text-xs font-mono text-gray-400 uppercase tracking-wider">
+        <label className="block text-xs font-mono text-sentinel-muted uppercase tracking-wider">
           ONE-CLICK EXPO DEMO DRILLS:
         </label>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -211,7 +210,7 @@ export const DrillTriggerView = ({ onIncidentTriggered }) => {
             return (
               <div
                 key={sc.id}
-                className={`glass-panel p-5 border rounded-xl transition-all space-y-3 flex flex-col justify-between ${sc.color}`}
+                className={`sentinel-card p-5 border rounded-xl transition-all space-y-3 flex flex-col justify-between ${sc.color}`}
               >
                 <div>
                   <div className="flex items-center justify-between mb-2">
@@ -227,11 +226,11 @@ export const DrillTriggerView = ({ onIncidentTriggered }) => {
                       {sc.severity.toUpperCase()}
                     </span>
                   </div>
-                  <p className="text-[11px] font-mono text-gray-400">{sc.desc}</p>
+                  <p className="text-[11px] font-mono text-sentinel-muted">{sc.desc}</p>
                 </div>
 
-                <div className="pt-2 border-t border-gray-800/80 flex items-center justify-between">
-                  <span className="text-[10px] font-mono text-gray-500">
+                <div className="pt-2 border-t border-sentinel-border flex items-center justify-between">
+                  <span className="text-[10px] font-mono text-sentinel-muted">
                     Node: {sc.payload.cameraId}
                   </span>
                   <button
@@ -250,23 +249,24 @@ export const DrillTriggerView = ({ onIncidentTriggered }) => {
       </div>
 
       {/* Custom Anomaly Builder Card */}
-      <div className="glass-panel p-6 border border-cyan-500/30 rounded-xl space-y-4">
-        <div className="flex items-center justify-between border-b border-gray-800 pb-3">
+      <div className="sentinel-card p-6 border-sentinel-cyan/30 rounded-xl space-y-4">
+        <div className="flex items-center justify-between border-b border-sentinel-border pb-3">
           <div className="flex items-center gap-2">
-            <h2 className="text-sm font-bold font-mono tracking-wider text-white uppercase">
+            <h2 className="text-sm font-bold font-mono tracking-wider text-white uppercase flex items-center gap-2">
+              <Sliders className="w-4 h-4 text-sentinel-cyan" />
               CUSTOM ANOMALY PAYLOAD BUILDER
             </h2>
-            <span className="text-[10px] font-mono text-[#00F0FF]">ADVANCED INJECTOR</span>
           </div>
+          <span className="badge badge-normal text-[10px]">ADVANCED INJECTOR</span>
         </div>
 
         <form onSubmit={handleCustomTrigger} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           <div>
-            <label className="block text-[11px] font-mono text-gray-400 mb-1">THREAT CLASS</label>
+            <label className="block text-[11px] font-mono text-sentinel-muted mb-1">THREAT CLASS</label>
             <select
               value={customThreat}
               onChange={(e) => setCustomThreat(e.target.value)}
-              className="w-full px-3 py-2 bg-black/60 border border-gray-800 focus:border-[#00F0FF] rounded-lg text-xs font-mono text-white"
+              className="w-full px-3 py-2 bg-sentinel-bg border border-sentinel-border focus:border-sentinel-cyan rounded-lg text-xs font-mono text-white outline-none"
             >
               <option value="Weapon Detected">Weapon Detected</option>
               <option value="Acoustic Distress: HELP, HELP">Acoustic Distress: HELP, HELP</option>
@@ -278,11 +278,11 @@ export const DrillTriggerView = ({ onIncidentTriggered }) => {
           </div>
 
           <div>
-            <label className="block text-[11px] font-mono text-gray-400 mb-1">CAMERA SENSOR</label>
+            <label className="block text-[11px] font-mono text-sentinel-muted mb-1">CAMERA SENSOR</label>
             <select
               value={customCam}
               onChange={(e) => setCustomCam(e.target.value)}
-              className="w-full px-3 py-2 bg-black/60 border border-gray-800 focus:border-[#00F0FF] rounded-lg text-xs font-mono text-white"
+              className="w-full px-3 py-2 bg-sentinel-bg border border-sentinel-border focus:border-sentinel-cyan rounded-lg text-xs font-mono text-white outline-none"
             >
               <option value="CAM-001">CAM-001 (Laptop Integrated Webcam)</option>
               <option value="CAM-002">CAM-002 (Patrol Smartphone IP Stream)</option>
@@ -290,17 +290,17 @@ export const DrillTriggerView = ({ onIncidentTriggered }) => {
           </div>
 
           <div>
-            <label className="block text-[11px] font-mono text-gray-400 mb-1">LOCATION TAG</label>
+            <label className="block text-[11px] font-mono text-sentinel-muted mb-1">LOCATION TAG</label>
             <input
               type="text"
               value={customLocation}
               onChange={(e) => setCustomLocation(e.target.value)}
-              className="w-full px-3 py-2 bg-black/60 border border-gray-800 focus:border-[#00F0FF] rounded-lg text-xs font-mono text-white"
+              className="w-full px-3 py-2 bg-sentinel-bg border border-sentinel-border focus:border-sentinel-cyan rounded-lg text-xs font-mono text-white outline-none"
             />
           </div>
 
           <div>
-            <label className="block text-[11px] font-mono text-gray-400 mb-1">
+            <label className="block text-[11px] font-mono text-sentinel-muted mb-1">
               ML CONFIDENCE: {customConfidence}%
             </label>
             <input
@@ -309,12 +309,12 @@ export const DrillTriggerView = ({ onIncidentTriggered }) => {
               max="99"
               value={customConfidence}
               onChange={(e) => setCustomConfidence(Number(e.target.value))}
-              className="w-full accent-cyan-400"
+              className="w-full accent-sentinel-cyan"
             />
           </div>
 
           <div>
-            <label className="block text-[11px] font-mono text-gray-400 mb-1">
+            <label className="block text-[11px] font-mono text-sentinel-muted mb-1">
               ACOUSTIC LEVEL: {customDecibels} dB
             </label>
             <input
@@ -323,18 +323,18 @@ export const DrillTriggerView = ({ onIncidentTriggered }) => {
               max="120"
               value={customDecibels}
               onChange={(e) => setCustomDecibels(Number(e.target.value))}
-              className="w-full accent-cyan-400"
+              className="w-full accent-sentinel-cyan"
             />
           </div>
 
           <div>
-            <label className="block text-[11px] font-mono text-gray-400 mb-1">AUDIO TRANSCRIPT</label>
+            <label className="block text-[11px] font-mono text-sentinel-muted mb-1">AUDIO TRANSCRIPT</label>
             <input
               type="text"
               value={customTranscript}
               onChange={(e) => setCustomTranscript(e.target.value)}
               placeholder="e.g. HELP! HELP! SUSPECT ON SCENE"
-              className="w-full px-3 py-2 bg-black/60 border border-gray-800 focus:border-[#00F0FF] rounded-lg text-xs font-mono text-white"
+              className="w-full px-3 py-2 bg-sentinel-bg border border-sentinel-border focus:border-sentinel-cyan rounded-lg text-xs font-mono text-white outline-none"
             />
           </div>
 

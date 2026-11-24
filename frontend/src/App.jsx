@@ -8,7 +8,10 @@ import { DashboardView } from './views/DashboardView';
 import { IncidentsView } from './views/IncidentsView';
 import { PoliceView } from './views/PoliceView';
 import { CameraFeedsView } from './views/CameraFeedsView';
+import { AudioMonitoringView } from './views/AudioMonitoringView';
+import { AnalyticsView } from './views/AnalyticsView';
 import { DrillTriggerView } from './views/DrillTriggerView';
+import { UserManagementView } from './views/UserManagementView';
 import { SettingsView } from './views/SettingsView';
 import { IncidentModal } from './components/IncidentModal';
 
@@ -16,12 +19,15 @@ const AppContent = () => {
   const { isAuthenticated, loading } = useAuth();
   const [currentView, setCurrentView] = useState('dashboard');
   const [selectedIncident, setSelectedIncident] = useState(null);
+  const [isMobileOpen, setIsMobileOpen] = useState(false);
 
   if (loading) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-[#07090E] text-white">
-        <div className="w-8 h-8 border-2 border-cyan-400 border-t-transparent rounded-full animate-spin mb-4"></div>
-        <p className="font-mono text-xs text-gray-400">INITIALIZING SENTINELX COMMAND SESSION...</p>
+      <div className="min-h-screen flex flex-col items-center justify-center bg-sentinel-bg text-white">
+        <div className="w-8 h-8 border-2 border-sentinel-cyan border-t-transparent rounded-full animate-spin mb-4" />
+        <p className="font-mono text-xs text-sentinel-muted tracking-wider">
+          INITIALIZING SENTINELX COMMAND SESSION...
+        </p>
       </div>
     );
   }
@@ -39,12 +45,16 @@ const AppContent = () => {
             onOpenDrillModal={() => setCurrentView('trigger')}
           />
         );
+      case 'cameras':
+        return <CameraFeedsView />;
+      case 'audio':
+        return <AudioMonitoringView onSelectIncident={setSelectedIncident} />;
       case 'incidents':
         return <IncidentsView onSelectIncident={setSelectedIncident} />;
       case 'police':
         return <PoliceView onSelectIncident={setSelectedIncident} />;
-      case 'cameras':
-        return <CameraFeedsView />;
+      case 'analytics':
+        return <AnalyticsView />;
       case 'trigger':
         return (
           <DrillTriggerView
@@ -53,6 +63,8 @@ const AppContent = () => {
             }}
           />
         );
+      case 'users':
+        return <UserManagementView />;
       case 'settings':
         return <SettingsView />;
       default:
@@ -66,21 +78,28 @@ const AppContent = () => {
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-[#07090E] text-white">
+    <div className="min-h-screen flex flex-col bg-sentinel-bg text-sentinel-text">
       {/* Top Navbar */}
       <Navbar
         currentView={currentView}
         setCurrentView={setCurrentView}
         onOpenDrillModal={() => setCurrentView('trigger')}
+        isMobileOpen={isMobileOpen}
+        setIsMobileOpen={setIsMobileOpen}
       />
 
       {/* Main Body */}
       <div className="flex-1 flex overflow-hidden">
         {/* Navigation Sidebar */}
-        <Sidebar currentView={currentView} setCurrentView={setCurrentView} />
+        <Sidebar
+          currentView={currentView}
+          setCurrentView={setCurrentView}
+          isMobileOpen={isMobileOpen}
+          setIsMobileOpen={setIsMobileOpen}
+        />
 
         {/* Dynamic Viewport */}
-        <main className="flex-1 overflow-y-auto bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-[#0d1527] via-[#080c14] to-[#05070a]">
+        <main className="flex-1 overflow-y-auto bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-sentinel-sidebar/60 via-sentinel-bg to-[#060913]">
           {renderView()}
         </main>
       </div>

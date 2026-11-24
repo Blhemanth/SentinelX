@@ -7,13 +7,10 @@ import {
   ShieldAlert,
   MapPin,
   Camera,
-  Clock,
   Volume2,
   CheckCircle,
   Siren,
   Send,
-  Radio,
-  FileText,
 } from 'lucide-react';
 
 export const IncidentModal = ({ incident, onClose, onUpdated }) => {
@@ -52,7 +49,7 @@ export const IncidentModal = ({ incident, onClose, onUpdated }) => {
       ctx.fillRect(0, 0, w, h);
 
       // Grid Overlay
-      ctx.strokeStyle = 'rgba(0, 240, 255, 0.08)';
+      ctx.strokeStyle = 'rgba(0, 217, 217, 0.08)';
       ctx.lineWidth = 1;
       for (let x = 0; x < w; x += 30) {
         ctx.beginPath();
@@ -79,8 +76,8 @@ export const IncidentModal = ({ incident, onClose, onUpdated }) => {
       const bh = renderH * h;
 
       const isCritical = currentIncident?.severity === 'critical';
-      const boxColor = isCritical ? 'rgba(239, 68, 68, 0.85)' : 'rgba(0, 240, 255, 0.85)';
-      const fillColor = isCritical ? 'rgba(239, 68, 68, 0.12)' : 'rgba(0, 240, 255, 0.08)';
+      const boxColor = isCritical ? 'rgba(255, 82, 104, 0.9)' : 'rgba(0, 217, 217, 0.9)';
+      const fillColor = isCritical ? 'rgba(255, 82, 104, 0.12)' : 'rgba(0, 217, 217, 0.08)';
 
       ctx.fillStyle = fillColor;
       ctx.fillRect(bx, by, bw, bh);
@@ -127,7 +124,7 @@ export const IncidentModal = ({ incident, onClose, onUpdated }) => {
 
       // Moving Scanline
       scanlineY = (scanlineY + 1.5) % h;
-      ctx.strokeStyle = 'rgba(0, 240, 255, 0.25)';
+      ctx.strokeStyle = 'rgba(0, 217, 217, 0.25)';
       ctx.lineWidth = 1.5;
       ctx.beginPath();
       ctx.moveTo(0, scanlineY);
@@ -135,12 +132,12 @@ export const IncidentModal = ({ incident, onClose, onUpdated }) => {
       ctx.stroke();
 
       // Telemetry OSD
-      ctx.fillStyle = '#00F0FF';
+      ctx.fillStyle = '#00D9D9';
       ctx.font = '10px JetBrains Mono, monospace';
       ctx.fillText(`CCTV FEED: ${currentIncident?.cameraId || 'CAM-001'} // REC [LIVE]`, 12, 20);
       ctx.fillText(`LATENCY: ${currentIncident?.inferenceLatencyMs || 14}ms // INT8 ONNX`, 12, 34);
 
-      ctx.fillStyle = '#EF4444';
+      ctx.fillStyle = '#FF5268';
       ctx.fillText(`STATUS: ${(currentIncident?.dispatchStatus || 'UNASSIGNED').toUpperCase()}`, w - 160, 20);
 
       animationFrameId = requestAnimationFrame(render);
@@ -158,7 +155,7 @@ export const IncidentModal = ({ incident, onClose, onUpdated }) => {
     const w = canvas.width;
     const h = canvas.height;
 
-    ctx.fillStyle = '#0B0F19';
+    ctx.fillStyle = '#080C16';
     ctx.fillRect(0, 0, w, h);
 
     const freqs = currentIncident?.audioFrequencies?.length
@@ -172,8 +169,8 @@ export const IncidentModal = ({ incident, onClose, onUpdated }) => {
       const y = h - barH;
 
       const grad = ctx.createLinearGradient(0, y, 0, h);
-      grad.addColorStop(0, '#00F0FF');
-      grad.addColorStop(1, '#3B82F6');
+      grad.addColorStop(0, '#00D9D9');
+      grad.addColorStop(1, '#477BFF');
 
       ctx.fillStyle = grad;
       ctx.fillRect(x + 2, y, barWidth - 4, barH);
@@ -224,11 +221,11 @@ export const IncidentModal = ({ incident, onClose, onUpdated }) => {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
-      <div className="w-full max-w-4xl max-h-[92vh] flex flex-col rounded-xl glass-panel border border-[rgba(0,240,255,0.3)] shadow-[0_0_50px_rgba(0,0,0,0.9)] overflow-hidden">
+      <div className="w-full max-w-4xl max-h-[92vh] flex flex-col rounded-xl sentinel-card border-sentinel-cyan/30 shadow-[0_0_50px_rgba(0,0,0,0.9)] overflow-hidden">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-800 bg-[rgba(13,17,26,0.95)]">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-sentinel-border bg-sentinel-sidebar">
           <div className="flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-red-500/20 border border-red-500/30 text-red-400">
+            <div className="p-2 rounded-lg bg-sentinel-critical/20 border border-sentinel-critical/30 text-sentinel-critical">
               <ShieldAlert className="w-5 h-5" />
             </div>
             <div>
@@ -237,17 +234,18 @@ export const IncidentModal = ({ incident, onClose, onUpdated }) => {
                   {currentIncident.threatClass}
                 </h2>
                 <span
-                  className={`badge ${currentIncident.severity === 'critical'
+                  className={`badge ${
+                    currentIncident.severity === 'critical'
                       ? 'badge-critical'
                       : currentIncident.severity === 'high'
-                        ? 'badge-high'
-                        : 'badge-normal'
-                    }`}
+                      ? 'badge-high'
+                      : 'badge-normal'
+                  }`}
                 >
                   {currentIncident.severity?.toUpperCase()}
                 </span>
                 {currentIncident.detectionStatus === 'low_confidence_review' && (
-                  <span className="badge font-mono text-[10px] bg-amber-500/20 text-amber-300 border border-amber-500/40">
+                  <span className="badge font-mono text-[10px] bg-sentinel-warning/20 text-sentinel-warning border border-sentinel-warning/40">
                     REVIEW NEEDED
                   </span>
                 )}
@@ -265,11 +263,11 @@ export const IncidentModal = ({ incident, onClose, onUpdated }) => {
                   ID: {currentIncident._id?.slice(-6) || 'LIVE'}
                 </span>
               </div>
-              <p className="text-xs font-mono text-gray-400 flex items-center gap-2 mt-0.5">
-                <MapPin className="w-3.5 h-3.5 text-[#00F0FF]" />
+              <p className="text-xs font-mono text-sentinel-muted flex items-center gap-2 mt-0.5">
+                <MapPin className="w-3.5 h-3.5 text-sentinel-cyan" />
                 {currentIncident.location || 'Perimeter Sector Alpha'}
                 <span>•</span>
-                <Camera className="w-3.5 h-3.5 text-blue-400" />
+                <Camera className="w-3.5 h-3.5 text-sentinel-blue" />
                 {currentIncident.cameraId}
               </p>
             </div>
@@ -277,7 +275,7 @@ export const IncidentModal = ({ incident, onClose, onUpdated }) => {
 
           <button
             onClick={onClose}
-            className="p-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-gray-800 transition-colors"
+            className="p-1.5 rounded-lg text-sentinel-muted hover:text-white hover:bg-sentinel-card transition-colors"
           >
             <X className="w-5 h-5" />
           </button>
@@ -287,9 +285,9 @@ export const IncidentModal = ({ incident, onClose, onUpdated }) => {
         <div className="flex-1 overflow-y-auto p-6 space-y-6">
           {/* Status Message Banner */}
           {statusMsg && (
-            <div className="p-3 rounded-lg bg-[#00F0FF]/10 border border-[#00F0FF]/30 text-xs font-mono text-[#00F0FF] flex items-center justify-between">
+            <div className="p-3 rounded-lg bg-sentinel-cyan/10 border border-sentinel-cyan/30 text-xs font-mono text-sentinel-cyan flex items-center justify-between">
               <span>{statusMsg}</span>
-              <button onClick={() => setStatusMsg(null)} className="text-gray-400 hover:text-white">
+              <button onClick={() => setStatusMsg(null)} className="text-sentinel-muted hover:text-white">
                 ✕
               </button>
             </div>
@@ -299,31 +297,31 @@ export const IncidentModal = ({ incident, onClose, onUpdated }) => {
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
             {/* Left 7 cols: CCTV Canvas */}
             <div className="lg:col-span-7 space-y-3">
-              <div className="text-xs font-mono text-gray-400 flex items-center justify-between">
+              <div className="text-xs font-mono text-sentinel-muted flex items-center justify-between">
                 <span>INCIDENT FRAME CAPTURE &amp; BOUNDING BOX</span>
-                <span className="text-[#34D399] flex items-center gap-1">
-                  <span className="w-2 h-2 rounded-full bg-[#34D399] animate-ping"></span>
+                <span className="text-sentinel-success flex items-center gap-1 font-bold">
+                  <span className="w-2 h-2 rounded-full bg-sentinel-success animate-ping" />
                   REPLAY ACTIVE
                 </span>
               </div>
-              <div className="relative rounded-lg overflow-hidden border border-gray-800 aspect-video bg-black shadow-inner">
+              <div className="relative rounded-lg overflow-hidden border border-sentinel-border aspect-video bg-black shadow-inner">
                 <canvas ref={canvasRef} width={640} height={360} className="w-full h-full block" />
               </div>
 
               {/* Spectral Waveform */}
-              <div className="p-3 rounded-lg bg-[rgba(19,25,38,0.7)] border border-gray-800">
-                <div className="flex items-center justify-between text-[11px] font-mono text-gray-400 mb-2">
+              <div className="p-3 rounded-lg bg-sentinel-bg border border-sentinel-border">
+                <div className="flex items-center justify-between text-[11px] font-mono text-sentinel-muted mb-2">
                   <span className="flex items-center gap-1.5">
-                    <Volume2 className="w-3.5 h-3.5 text-[#00F0FF]" />
+                    <Volume2 className="w-3.5 h-3.5 text-sentinel-cyan" />
                     SPECTRAL ACOUSTIC SIGNATURE ({currentIncident.audioDecibels || 89.2} dB)
                   </span>
-                  <span className="text-[#00F0FF]">
+                  <span className="text-sentinel-cyan">
                     {currentIncident.audioTranscript ? 'SPEECH DISTRESS DETECTED' : 'NORMAL AUDIO'}
                   </span>
                 </div>
                 <canvas ref={waveformRef} width={400} height={48} className="w-full h-12 block rounded" />
                 {currentIncident.audioTranscript && (
-                  <div className="mt-2 text-xs font-mono text-amber-300 bg-amber-500/10 p-2 rounded border border-amber-500/20">
+                  <div className="mt-2 text-xs font-mono text-sentinel-warning bg-sentinel-warning/10 p-2 rounded border border-sentinel-warning/20">
                     "{currentIncident.audioTranscript}"
                   </div>
                 )}
@@ -333,60 +331,60 @@ export const IncidentModal = ({ incident, onClose, onUpdated }) => {
             {/* Right 5 cols: Telemetry & Actions */}
             <div className="lg:col-span-5 space-y-4">
               {/* Telemetry Key-Value Card */}
-              <div className="p-4 rounded-lg bg-[rgba(19,25,38,0.7)] border border-gray-800 space-y-2.5 text-xs font-mono">
-                <div className="text-[10px] tracking-widest text-gray-500 uppercase border-b border-gray-800 pb-1">
+              <div className="p-4 rounded-lg bg-sentinel-bg border border-sentinel-border space-y-2.5 text-xs font-mono">
+                <div className="text-[10px] tracking-widest text-sentinel-muted uppercase border-b border-sentinel-border pb-1">
                   FORENSIC TELEMETRY
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-gray-400">ML Confidence:</span>
+                  <span className="text-sentinel-muted">ML Confidence:</span>
                   <span className="text-white font-bold">
                     {((currentIncident.confidence || 0.95) * 100).toFixed(2)}%
                   </span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-gray-400">Timestamp:</span>
-                  <span className="text-gray-200">
-                    {new Date(currentIncident.frameTimestamp || Date.now()).toLocaleTimeString()} (
-                    {new Date(currentIncident.frameTimestamp || Date.now()).toLocaleDateString()})
+                  <span className="text-sentinel-muted">Timestamp:</span>
+                  <span className="text-sentinel-text">
+                    {currentIncident.frameTimestamp ? new Date(currentIncident.frameTimestamp).toLocaleString() : 'N/A'}
                   </span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-gray-400">Model Pipeline:</span>
-                  <span className="text-[#00F0FF]">
+                  <span className="text-sentinel-muted">Model Pipeline:</span>
+                  <span className="text-sentinel-cyan font-bold">
                     {currentIncident.modelVersion || '1.0.0-ONNX-INT8'}
                   </span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-gray-400">Inference Latency:</span>
-                  <span className="text-[#34D399]">
+                  <span className="text-sentinel-muted">Inference Latency:</span>
+                  <span className="text-sentinel-success font-bold">
                     {currentIncident.inferenceLatencyMs || 14} ms
                   </span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-gray-400">Detection Status:</span>
-                  <span className={`font-bold ${currentIncident.detectionStatus === 'low_confidence_review'
-                      ? 'text-amber-400'
+                  <span className="text-sentinel-muted">Detection Status:</span>
+                  <span className={`font-bold ${
+                    currentIncident.detectionStatus === 'low_confidence_review'
+                      ? 'text-sentinel-warning'
                       : currentIncident.detectionStatus === 'subprocess_fallback'
-                        ? 'text-yellow-400'
-                        : currentIncident.detectionStatus === 'legacy_unclassified'
-                          ? 'text-gray-400'
-                          : currentIncident.detectionStatus === 'anomaly_detected'
-                            ? 'text-red-400'
-                            : 'text-[#34D399]'
-                    }`}>
+                      ? 'text-yellow-400'
+                      : currentIncident.detectionStatus === 'legacy_unclassified'
+                      ? 'text-sentinel-muted'
+                      : currentIncident.detectionStatus === 'anomaly_detected'
+                      ? 'text-sentinel-critical'
+                      : 'text-sentinel-success'
+                  }`}>
                     {(currentIncident.detectionStatus || 'legacy_unclassified').replace(/_/g, ' ').toUpperCase()}
                   </span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-gray-400">Detection Source:</span>
-                  <span className="text-gray-300">
+                  <span className="text-sentinel-muted">Detection Source:</span>
+                  <span className="text-sentinel-text">
                     {(currentIncident.detectionSource || 'ml_real').replace(/_/g, ' ').toUpperCase()}
                   </span>
                 </div>
-                <div className="flex justify-between items-center pt-1 border-t border-gray-800">
-                  <span className="text-gray-400">Triage Acknowledged:</span>
+                <div className="flex justify-between items-center pt-1 border-t border-sentinel-border">
+                  <span className="text-sentinel-muted">Triage Acknowledged:</span>
                   {currentIncident.isAcknowledged ? (
-                    <span className="badge badge-normal text-[10px] text-[#34D399] flex items-center gap-1">
+                    <span className="badge badge-normal text-[10px] text-sentinel-success flex items-center gap-1 font-bold">
                       <CheckCircle className="w-3 h-3" />
                       YES
                     </span>
@@ -394,7 +392,7 @@ export const IncidentModal = ({ incident, onClose, onUpdated }) => {
                     <button
                       onClick={handleAcknowledge}
                       disabled={loadingAction || (!isAnalyst && !isAdmin)}
-                      className="px-2 py-0.5 rounded bg-amber-500/20 border border-amber-500/40 text-amber-300 text-[10px] hover:bg-amber-500/30 font-bold"
+                      className="px-2 py-0.5 rounded bg-sentinel-warning/20 border border-sentinel-warning/40 text-sentinel-warning text-[10px] hover:bg-sentinel-warning/30 font-bold"
                     >
                       ACKNOWLEDGE NOW
                     </button>
@@ -403,13 +401,13 @@ export const IncidentModal = ({ incident, onClose, onUpdated }) => {
               </div>
 
               {/* Police Dispatch Console */}
-              <div className="p-4 rounded-lg bg-[rgba(19,25,38,0.7)] border border-blue-500/30 space-y-3">
-                <div className="flex items-center justify-between text-xs font-mono font-bold text-blue-400">
+              <div className="p-4 rounded-lg bg-sentinel-bg border border-sentinel-blue/40 space-y-3">
+                <div className="flex items-center justify-between text-xs font-mono font-bold text-sentinel-blue">
                   <span className="flex items-center gap-1.5">
-                    <Siren className="w-4 h-4 text-blue-400 animate-pulse" />
+                    <Siren className="w-4 h-4 text-sentinel-blue animate-pulse" />
                     POLICE TACTICAL DISPATCH
                   </span>
-                  <span className="text-[10px] text-gray-400 uppercase">
+                  <span className="text-[10px] text-sentinel-muted uppercase">
                     STATUS: {dispatchStatus.replace('_', ' ')}
                   </span>
                 </div>
@@ -419,40 +417,44 @@ export const IncidentModal = ({ incident, onClose, onUpdated }) => {
                   <button
                     onClick={() => handleUpdateDispatch('assigned_police')}
                     disabled={loadingAction || (!isPolice && !isAdmin)}
-                    className={`p-2 rounded border text-left transition-colors ${dispatchStatus === 'assigned_police'
-                        ? 'bg-blue-600/30 border-blue-400 text-blue-300 font-bold'
-                        : 'bg-gray-800/50 border-gray-700 text-gray-400 hover:border-gray-600'
-                      }`}
+                    className={`p-2 rounded border text-left transition-colors ${
+                      dispatchStatus === 'assigned_police'
+                        ? 'bg-sentinel-blue/30 border-sentinel-blue text-sentinel-blue font-bold'
+                        : 'bg-sentinel-card border-sentinel-border text-sentinel-muted hover:border-sentinel-muted'
+                    }`}
                   >
                     1. ASSIGN POLICE
                   </button>
                   <button
                     onClick={() => handleUpdateDispatch('en_route')}
                     disabled={loadingAction || (!isPolice && !isAdmin)}
-                    className={`p-2 rounded border text-left transition-colors ${dispatchStatus === 'en_route'
-                        ? 'bg-amber-600/30 border-amber-400 text-amber-300 font-bold'
-                        : 'bg-gray-800/50 border-gray-700 text-gray-400 hover:border-gray-600'
-                      }`}
+                    className={`p-2 rounded border text-left transition-colors ${
+                      dispatchStatus === 'en_route'
+                        ? 'bg-sentinel-warning/30 border-sentinel-warning text-sentinel-warning font-bold'
+                        : 'bg-sentinel-card border-sentinel-border text-sentinel-muted hover:border-sentinel-muted'
+                    }`}
                   >
                     2. EN ROUTE
                   </button>
                   <button
                     onClick={() => handleUpdateDispatch('on_scene')}
                     disabled={loadingAction || (!isPolice && !isAdmin)}
-                    className={`p-2 rounded border text-left transition-colors ${dispatchStatus === 'on_scene'
+                    className={`p-2 rounded border text-left transition-colors ${
+                      dispatchStatus === 'on_scene'
                         ? 'bg-purple-600/30 border-purple-400 text-purple-300 font-bold'
-                        : 'bg-gray-800/50 border-gray-700 text-gray-400 hover:border-gray-600'
-                      }`}
+                        : 'bg-sentinel-card border-sentinel-border text-sentinel-muted hover:border-sentinel-muted'
+                    }`}
                   >
                     3. ON SCENE
                   </button>
                   <button
                     onClick={() => handleUpdateDispatch('resolved')}
                     disabled={loadingAction || (!isPolice && !isAdmin)}
-                    className={`p-2 rounded border text-left transition-colors ${dispatchStatus === 'resolved'
-                        ? 'bg-emerald-600/30 border-emerald-400 text-emerald-300 font-bold'
-                        : 'bg-gray-800/50 border-gray-700 text-gray-400 hover:border-gray-600'
-                      }`}
+                    className={`p-2 rounded border text-left transition-colors ${
+                      dispatchStatus === 'resolved'
+                        ? 'bg-sentinel-success/30 border-sentinel-success text-sentinel-success font-bold'
+                        : 'bg-sentinel-card border-sentinel-border text-sentinel-muted hover:border-sentinel-muted'
+                    }`}
                   >
                     4. MARK SECURE
                   </button>
@@ -461,7 +463,7 @@ export const IncidentModal = ({ incident, onClose, onUpdated }) => {
                 {/* Dispatch Form Inputs */}
                 <div className="space-y-2 pt-2">
                   <div>
-                    <label className="block text-[10px] font-mono text-gray-400 mb-1">
+                    <label className="block text-[10px] font-mono text-sentinel-muted mb-1">
                       ASSIGNED POLICE UNIT
                     </label>
                     <input
@@ -469,12 +471,12 @@ export const IncidentModal = ({ incident, onClose, onUpdated }) => {
                       value={assignedTo}
                       onChange={(e) => setAssignedTo(e.target.value)}
                       placeholder="e.g. Unit 104 (Officer Vance)"
-                      className="w-full px-2.5 py-1.5 bg-black/50 border border-gray-700 rounded text-xs font-mono text-white focus:outline-none focus:border-blue-400"
+                      className="w-full px-2.5 py-1.5 bg-sentinel-card border border-sentinel-border rounded text-xs font-mono text-white focus:outline-none focus:border-sentinel-blue"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-[10px] font-mono text-gray-400 mb-1">
+                    <label className="block text-[10px] font-mono text-sentinel-muted mb-1">
                       POLICE LOG NOTES
                     </label>
                     <textarea
@@ -482,7 +484,7 @@ export const IncidentModal = ({ incident, onClose, onUpdated }) => {
                       value={policeNotes}
                       onChange={(e) => setPoliceNotes(e.target.value)}
                       placeholder="Enter tactical observations, suspect apprehension, or resolution notes..."
-                      className="w-full px-2.5 py-1.5 bg-black/50 border border-gray-700 rounded text-xs font-mono text-white focus:outline-none focus:border-blue-400"
+                      className="w-full px-2.5 py-1.5 bg-sentinel-card border border-sentinel-border rounded text-xs font-mono text-white focus:outline-none focus:border-sentinel-blue"
                     />
                   </div>
 
@@ -501,11 +503,11 @@ export const IncidentModal = ({ incident, onClose, onUpdated }) => {
         </div>
 
         {/* Footer */}
-        <div className="px-6 py-3 border-t border-gray-800 bg-[rgba(13,17,26,0.95)] flex items-center justify-between text-xs font-mono">
-          <span className="text-gray-500">SENTINELX MERN + FLUTTER REAL-TIME SYNC</span>
+        <div className="px-6 py-3 border-t border-sentinel-border bg-sentinel-sidebar flex items-center justify-between text-xs font-mono">
+          <span className="text-sentinel-muted">SENTINELX MERN + FLUTTER REAL-TIME SYNC</span>
           <button
             onClick={onClose}
-            className="px-4 py-1.5 rounded-lg border border-gray-700 hover:border-gray-500 text-gray-300 hover:text-white"
+            className="btn-secondary text-xs py-1 px-4"
           >
             Close
           </button>
